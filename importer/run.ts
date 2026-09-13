@@ -138,19 +138,17 @@ async function main() {
       path.join(dir, "browser"),
       {
         channel: "chrome",
-        headless: !login,
+        headless: login ? false : config.headless === true,
         viewport: { width: 1440, height: 1000 },
       },
     );
-    if (!login)
-      await context.route("**/*", (route) =>
-        ["image", "media", "font"].includes(route.request().resourceType())
-          ? route.abort()
-          : route.continue(),
-      );
     const page = context.pages()[0] || (await context.newPage());
     const deadline = Date.now() + 10 * 60000;
+    let lastNavigation = 0;
     async function navigate(url: string, selector: string) {
+      const delay = Math.max(0, 5000 - (Date.now() - lastNavigation));
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+      lastNavigation = Date.now();
       let lastError: unknown;
       for (let attempt = 0; attempt < 2; attempt++) {
         if (Date.now() > deadline) throw Error("Import time limit reached");
@@ -196,14 +194,51 @@ async function main() {
       }
       throw lastError;
     }
-    const captureStartedAt = new Date().toISOString();
+    const checkpointFile = path.join(dir, "checkpoint.json");
+    const identity = JSON.stringify({
+      roster: config.rosterUrl,
+      pages: config.pages,
+      full: config.fullPlayerPool,
+    });
+    let checkpoint: {
+      identity: string;
+      startedAt: string;
+      pages: Record<
+        string,
+        PageCapture & { links: { text: string; url: string }[] }
+      >;
+    } = { identity, startedAt: new Date().toISOString(), pages: {} };
+    if (fs.existsSync(checkpointFile)) {
+      try {
+        const saved = JSON.parse(fs.readFileSync(checkpointFile, "utf8"));
+        if (
+          saved.identity === identity &&
+          Date.now() - Date.parse(saved.startedAt) < 2 * 3600000
+        )
+          checkpoint = saved;
+      } catch {}
+    }
+    const captureStartedAt = checkpoint.startedAt;
+    async function readPage(url: string, selector: string, kind: string) {
+      const key = kind + ":" + url;
+      if (checkpoint.pages[key]) return checkpoint.pages[key];
+      await navigate(url, selector);
+      const captured = { ...(await page.evaluate(capture)), kind };
+      if (kind === "players" && !parsePlayers(captured).length)
+        throw Error("Player page returned no parsed rows");
+      checkpoint.pages[key] = captured;
+      fs.writeFileSync(checkpointFile, JSON.stringify(checkpoint), {
+        mode: 0o600,
+      });
+      return captured;
+    }
     await progress("Loading roster");
     if (login)
       await page.goto(config.rosterUrl, {
         waitUntil: "commit",
         timeout: 30000,
       });
-    else await navigate(config.rosterUrl, "#statTable0");
+
     if (login) {
       console.log(
         "Sign in to Yahoo in this dedicated browser, then close it when finished.",
@@ -213,20 +248,8 @@ async function main() {
       );
       return;
     }
-    if (
-      !page.url().startsWith("https://football.fantasysports.yahoo.com/f1/") ||
-      (await page.locator("input[type=password]").count())
-    ) {
-      await report(
-        "authentication_required",
-        "Open the Mac importer login to reconnect Yahoo.",
-      );
-      process.exitCode = 2;
-      return;
-    }
-    await page.locator("#statTable0").waitFor({ timeout: 30000 });
     const pages: PageCapture[] = [
-      { ...(await page.evaluate(capture)), kind: "roster" },
+      await readPage(config.rosterUrl, "#statTable0", "roster"),
     ];
     const root = new URL(config.rosterUrl).pathname
       .split("/")
@@ -252,11 +275,7 @@ async function main() {
       )
         throw Error("Invalid import route");
       await progress("Reading " + entry.kind);
-      await navigate(url.href, "#yspmain");
-      if (new URL(page.url()).origin !== url.origin)
-        throw Error("Yahoo login required");
-      await page.locator("#yspmain").waitFor({ timeout: 30000 });
-      pages.push({ ...(await page.evaluate(capture)), kind: entry.kind });
+      pages.push(await readPage(url.href, "#yspmain", entry.kind));
     }
     const week = normalize(pages).week;
     const coverage = [];
@@ -280,11 +299,7 @@ async function main() {
         while (next && count < 80 && !seen.has(next)) {
           seen.add(next);
           await progress("Reading " + position + " player page " + (count + 1));
-          await navigate(next, "#statselect");
-          const captured = {
-            ...(await page.evaluate(capture)),
-            kind: "players",
-          };
+          const captured = await readPage(next, "#statselect", "players");
           const parsed = parsePlayers(captured);
           rows += parsed.length;
           count++;
