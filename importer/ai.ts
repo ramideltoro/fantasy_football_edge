@@ -70,12 +70,13 @@ async function main() {
             maxItems: 5,
             items: {
               type: "object",
-              required: ["id", "evidence", "news"],
+              required: ["id", "summary", "evidence", "news"],
               properties: {
                 id: {
                   type: "string",
                   enum: (context.waiverCandidates || []).map((p: any) => p.id),
                 },
+                summary: { type: "string", maxLength: 500 },
                 evidence: {
                   type: "array",
                   minItems: 1,

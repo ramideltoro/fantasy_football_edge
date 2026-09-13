@@ -30,6 +30,7 @@ const Output = z.object({
     .array(
       z.object({
         id: z.string(),
+        summary: z.string().max(500).optional(),
         evidence: z.array(z.string()).min(1).max(3),
         news: z.array(z.number().int().min(0).max(2)).max(3),
       }),
@@ -130,7 +131,10 @@ export function groundAnalysis(raw: unknown, data: any) {
       throw Error("Unsupported waiver evidence");
     return {
       id: x.id,
-      reason: x.evidence.map((k) => facts[k]).join(" "),
+      summary: x.summary || "",
+      reason: [...new Set(["projection", "role", ...x.evidence])]
+        .map((k) => facts[k])
+        .join(" "),
       news: [...new Set(x.news)].map((i) => p.headlines[i]),
       projection: p.projection,
     };

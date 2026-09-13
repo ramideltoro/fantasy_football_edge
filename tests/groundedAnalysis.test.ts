@@ -57,3 +57,13 @@ test('waiver picks reject owned players and nonexistent news citations',()=>{
  const r=groundAnalysis({...base,waivers:[{id:'waiver',evidence:['role'],news:[0]}]},d);
  assert.equal(r.waivers[0].news[0].url,'https://example.com/report');
 });
+test('waiver assessments are bounded and distinct from canonical evidence',()=>{
+ const waiver={...p,id:'waiver',slot:'',available:'FA',headlines:[]};
+ const d={...data,players:[p,waiver],waiverCandidates:['waiver']};
+ const base={insights:[{id:'one',action:'hold',evidence:['projection']}]};
+ const row={id:'waiver',summary:'Consider as depth; playing time is uncertain.',evidence:['role'],news:[]};
+ const r=groundAnalysis({...base,waivers:[row]},d);
+ assert.equal(r.waivers[0].summary,row.summary);
+ assert.match(r.waivers[0].reason,/10.00/);
+ assert.throws(()=>groundAnalysis({...base,waivers:[{...row,summary:'x'.repeat(501)}]},d));
+});

@@ -1,3 +1,5 @@
+import { TeamBrief } from "./TeamBrief";
+import { DecisionCharts } from "./DecisionCharts";
 import { useEffect, useState } from "react";
 import {
   ResponsiveContainer,
@@ -71,76 +73,10 @@ export function AIInsights({ owner }: { owner: boolean }) {
       </section>
       {d && (
         <>
+          <TeamBrief data={d} status={state.status} />
           <section className="panel">
-            <h3>AI team summary · Week {d.week}</h3>
-            {d.qwen?.teamBrief ? (
-              <>
-                <p>
-                  Qwen’s priorities for your current roster and matchup, using
-                  the latest imported evidence.
-                </p>
-                <ol>
-                  {d.qwen.teamBrief.priorities.map((x: any) => (
-                    <li key={x.key}>
-                      <p>{x.text}</p>
-                    </li>
-                  ))}
-                </ol>
-                <div className="metrics">
-                  {[
-                    "roster",
-                    "matchup",
-                    "risks",
-                    "lineup",
-                    "changes",
-                    "waivers",
-                  ]
-                    .filter(
-                      (key) =>
-                        !d.qwen.teamBrief.priorities.some(
-                          (x: any) => x.key === key,
-                        ),
-                    )
-                    .map((key) => (
-                      <div className="metric" key={key}>
-                        <b>
-                          {
-                            (
-                              {
-                                roster: "Roster assessment",
-                                matchup: "This week’s matchup",
-                                risks: "Availability watch",
-                                lineup: "Lineup opportunity",
-                                changes: "Suggested changes",
-                                waivers: "Waiver strategy",
-                              } as Record<string, string>
-                            )[key]
-                          }
-                        </b>
-                        <p>{d.qwen.teamBrief.facts[key]}</p>
-                      </div>
-                    ))}
-                </div>
-                <p>{d.qwen.teamBrief.facts.uncertainty}</p>
-                <small>
-                  Roster captured {new Date(d.snapshotAt).toLocaleString()} · AI
-                  generated {new Date(d.qwen.generatedAt).toLocaleString()}.
-                  Games may have locked since this analysis; refresh before
-                  acting.
-                </small>
-              </>
-            ) : (
-              <p>
-                Your team briefing is{" "}
-                {state.status === "failed"
-                  ? "unavailable; retry analysis above"
-                  : "being prepared by Qwen"}
-                .
-              </p>
-            )}
-          </section>
-          <section className="panel">
-            <h3>Player actions to review</h3>
+            <h3>Player decisions & evidence</h3>
+            {d.qwen && <DecisionCharts data={d} mode="team" />}
             {d.qwen ? (
               <>
                 <p>{d.qwen.summary}</p>
@@ -155,7 +91,7 @@ export function AIInsights({ owner }: { owner: boolean }) {
                     (player?.kickoffAt &&
                       Date.parse(player.kickoffAt) <= Date.now());
                   return (
-                    <div className="watch" key={x.id}>
+                    <div className="ai-pick ai-action" key={x.id}>
                       <div>
                         <b>
                           {player?.name} · {locked ? "Game locked" : x.action}

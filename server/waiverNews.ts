@@ -1,6 +1,9 @@
 import { XMLParser } from "fast-xml-parser";
 import type { Pool } from "pg";
 export const waiverFeeds = [
+  ["Draft Sharks · player news", "https://www.draftsharks.com/rss/shark-bites"],
+  ["Draft Sharks · injuries", "https://www.draftsharks.com/rss/injury-news"],
+  ["Draft Sharks · advice", "https://www.draftsharks.com/rss/advice"],
   ["ESPN", "https://www.espn.com/espn/rss/nfl/news"],
   ["Yahoo Sports", "https://sports.yahoo.com/nfl/rss.xml"],
   ["CBS Sports", "https://www.cbssports.com/rss/headlines/nfl/"],
