@@ -26,6 +26,9 @@ await db.query(
 await db.query(
   "CREATE TABLE IF NOT EXISTS refresh_request(id integer primary key CHECK(id=1), requested_at timestamptz not null, fulfilled_at timestamptz)",
 );
+await db.query(
+  "CREATE TABLE IF NOT EXISTS worker_health(id integer primary key CHECK(id=1),seen_at timestamptz not null,state jsonb not null)",
+);
 app.disable("x-powered-by");
 app.set("trust proxy", "loopback");
 app.use(
@@ -189,6 +192,7 @@ app.post("/api/import/request", async (q, r) => {
   await db.query(
     "INSERT INTO refresh_request VALUES(1,now(),null) ON CONFLICT(id) DO UPDATE SET requested_at=CASE WHEN refresh_request.fulfilled_at IS NULL THEN refresh_request.requested_at ELSE now() END, fulfilled_at=null",
   );
+  await db.query("INSERT INTO events(status,message) VALUES('queued','Owner requested a Yahoo refresh.')");
   r.json({
     ok: true,
     message:
@@ -208,11 +212,46 @@ app.get("/api/import/request", async (q, r) => {
     requestedAt: row?.requested_at || null,
   });
 });
+app.post("/api/import/heartbeat", async (q, r) => {
+  if (!tokenOK(q)) return r.sendStatus(401);
+  const state = {
+    status: String(q.body.status || "idle").slice(0, 40),
+    message: String(q.body.message || "").slice(0, 200),
+    retryAt: typeof q.body.retryAt === "string" ? q.body.retryAt : null,
+  };
+  await db.query(
+    "INSERT INTO worker_health VALUES(1,now(),$1) ON CONFLICT(id) DO UPDATE SET seen_at=now(),state=$1",
+    [state],
+  );
+  r.json({ ok: true });
+});
+app.get("/api/import/operations", async (q, r) => {
+  if ((await session(q))?.email !== owner) return r.sendStatus(401);
+  const [worker, request, logs] = await Promise.all([
+    db.query("SELECT seen_at,state FROM worker_health WHERE id=1"),
+    db.query(
+      "SELECT requested_at,fulfilled_at FROM refresh_request WHERE id=1",
+    ),
+    db.query(
+      "SELECT id,created_at,status,message FROM events ORDER BY id DESC LIMIT 150",
+    ),
+  ]);
+  r.json({
+    worker: worker.rows[0] || null,
+    request: request.rows[0] || null,
+    logs: logs.rows,
+  });
+});
 app.post("/api/import/status", async (q, r) => {
   if (!tokenOK(q)) return r.sendStatus(401);
-  const status = ["ok", "failed", "authentication_required"].includes(
-    q.body.status,
-  )
+  await db.query("INSERT INTO worker_health VALUES(1,now(),$1) ON CONFLICT(id) DO UPDATE SET seen_at=now(),state=$1",[{status:String(q.body.status||'failed').slice(0,40),message:String(q.body.message||'').slice(0,200)}]);
+  const status = [
+    "ok",
+    "failed",
+    "authentication_required",
+    "running",
+    "queued",
+  ].includes(q.body.status)
     ? q.body.status
     : "failed";
   await db.query("INSERT INTO events(status,message) VALUES($1,$2)", [

@@ -44,8 +44,9 @@ async function main() {
   fs.writeFileSync(lock, String(process.pid), { flag: "wx", mode: 0o600 });
   let context;
   let stage = "starting";
-  const progress = (value: string) => {
+  const progress = async (value: string) => {
     stage = value;
+    await report("running", value);
     fs.writeFileSync(
       path.join(dir, "status.json"),
       JSON.stringify({
@@ -59,6 +60,30 @@ async function main() {
   try {
     const login = process.argv.includes("--login");
     const cooldownFile = path.join(dir, "retry-after");
+    if (!login) {
+      const retryAt = fs.existsSync(cooldownFile)
+        ? Number(fs.readFileSync(cooldownFile, "utf8"))
+        : 0;
+      const local = fs.existsSync(path.join(dir, "status.json"))
+        ? JSON.parse(fs.readFileSync(path.join(dir, "status.json"), "utf8"))
+        : {};
+      try {
+        await fetch(config.endpoint + "/api/import/heartbeat", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + config.token,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: retryAt > Date.now() ? "cooldown" : local.status || "idle",
+            message: local.message || "Worker checked for work",
+            retryAt:
+              retryAt > Date.now() ? new Date(retryAt).toISOString() : null,
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+      } catch {}
+    }
     if (
       !login &&
       fs.existsSync(cooldownFile) &&
@@ -171,7 +196,7 @@ async function main() {
       }
       throw lastError;
     }
-    progress("Loading roster");
+    await progress("Loading roster");
     if (login)
       await page.goto(config.rosterUrl, {
         waitUntil: "commit",
@@ -225,7 +250,7 @@ async function main() {
         !(url.pathname === root || url.pathname.startsWith(root + "/"))
       )
         throw Error("Invalid import route");
-      progress("Reading " + entry.kind);
+      await progress("Reading " + entry.kind);
       await navigate(url.href, "#yspmain");
       if (new URL(page.url()).origin !== url.origin)
         throw Error("Yahoo login required");
@@ -253,7 +278,7 @@ async function main() {
         const seen = new Set<string>();
         while (next && count < 80 && !seen.has(next)) {
           seen.add(next);
-          progress("Reading " + position + " player page " + (count + 1));
+          await progress("Reading " + position + " player page " + (count + 1));
           await navigate(next, "#statselect");
           const captured = {
             ...(await page.evaluate(capture)),
@@ -329,7 +354,7 @@ async function main() {
       ]),
       { mode: 0o600 },
     );
-    progress("Uploading validated snapshot");
+    await progress("Uploading validated snapshot");
     const r = await fetch(config.endpoint + "/api/import/snapshot", {
       method: "POST",
       headers: {

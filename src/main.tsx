@@ -1,3 +1,4 @@
+import { ImportOperations } from "./ImportOperations";
 import { useNflDepth, nflRole } from "./nflRole";
 import { WaiverList } from "./WaiverList";
 import React, { useEffect, useState, useMemo, useRef } from "react";
@@ -42,6 +43,7 @@ const tabs = [
   "League",
   "News & trends",
   "Import health",
+  "Yahoo refresh",
 ];
 function App() {
   const refreshing = useRef(false);
@@ -214,6 +216,7 @@ function App() {
                   <Zap />,
                   <Shield />,
                   <ArrowUpRight />,
+                  <RefreshCw />,
                   <RefreshCw />,
                 ][i]
               }
@@ -1039,6 +1042,7 @@ function App() {
                 )}
               </Panel>
             )}
+            {tab === "Yahoo refresh" && <ImportOperations owner={d.owner} />}
             {tab === "Import health" && (
               <>
                 <div className="metrics">
