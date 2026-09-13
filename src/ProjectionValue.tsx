@@ -20,7 +20,7 @@ export function ProjectionDetails({ player: p }: { player: PlayerData }) {
         <>
           <p>{p.aiProjection.reason}</p>
           <p>
-            Qwen range: {p.aiProjection.low ?? "—"}–{p.aiProjection.high ?? "—"}{" "}
+            Historical variability: {p.aiProjection.low ?? "—"}–{p.aiProjection.high ?? "—"}{" "}
             · illustrative, not calibrated confidence.
           </p>
           <small>

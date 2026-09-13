@@ -1,3 +1,4 @@
+import { statisticalProjection, projectionMethod } from "../shared/statisticalProjection.ts";
 import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import { z } from "zod";
@@ -13,6 +14,7 @@ export async function enqueueProjections(db: Pool, id: string, d: any) {
   );
   for (let i = 0; i < players.length; i += 8) {
     const input = {
+      method: projectionMethod,
       season: d.season,
       week: d.week,
       scoring: d.scoring,
@@ -41,12 +43,12 @@ export async function enqueueProjections(db: Pool, id: string, d: any) {
       .update(JSON.stringify({ ...input, refreshWindow: Math.floor(Date.now()/14400000) }))
       .digest("hex");
     await db.query(
-      "INSERT INTO projection_jobs(hash,snapshot_id,season,week,data) VALUES($1,$2,$3,$4,$5) ON CONFLICT(hash) DO UPDATE SET snapshot_id=EXCLUDED.snapshot_id",
-      [hash, id, d.season, d.week, input],
+      "INSERT INTO projection_jobs(hash,snapshot_id,season,week,data,result,status,completed_at) VALUES($1,$2,$3,$4,$5,$6,'complete',now()) ON CONFLICT(hash) DO NOTHING",
+      [hash, id, d.season, d.week, input, JSON.stringify(input.players.map(p => statisticalProjection(p,input)))],
     );
   }
   await db.query(
-    "UPDATE projection_jobs SET status='superseded' WHERE status='ready' AND snapshot_id<$1 AND season=$2 AND week=$3",
+    "UPDATE projection_jobs SET status='superseded' WHERE status IN ('ready','analyzing') AND snapshot_id<=$1 AND season=$2 AND week=$3",
     [id, d.season, d.week],
   );
 }
@@ -173,7 +175,7 @@ export async function saveProjection(db: Pool, body: any) {
 export async function projectionMap(db: Pool, season: number, week: number) {
   const rows = (
     await db.query(
-      "SELECT data,result,completed_at FROM projection_jobs WHERE season=$1 AND week=$2 AND status='complete' AND completed_at>now()-interval '4 hours' ORDER BY created_at ASC",
+      "SELECT data,result,completed_at FROM projection_jobs WHERE data->>'method'='statistics-v1' AND season=$1 AND week=$2 AND status='complete' AND completed_at>now()-interval '4 hours' ORDER BY created_at ASC",
       [season, week],
     )
   ).rows;
@@ -183,7 +185,8 @@ export async function projectionMap(db: Pool, season: number, week: number) {
       const p = row.data.players.find((p: any) => p.id === f.id);
       map.set(f.id, {
         ...f,
-        reason: f.points===null ? 'Qwen did not produce a supported independent estimate; Yahoo fallback remains available.' : 'Experimental Qwen estimate: '+f.points.toFixed(2)+' points. Supplied evidence: '+(p.history?.length||0)+' historical games and '+Math.min(1,p.news?.length||0)+' news item. NFL role: '+p.nflRole+'; opponent: '+(p.opponent||'unknown')+'. Prior-season data is context, not current form.',
+        reason: f.reason,
+        label: "Statistical",
         generatedAt: row.completed_at,
         team: p.team,
         sources: p.news.map((n: any) => ({
@@ -193,7 +196,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
           publishedAt: n.publishedAt,
         })),
         method:
-          "Experimental Qwen estimate from online statistics and reporting; Yahoo projection excluded from input.",
+          "Recency-weighted current-season scoring; Yahoo excluded; Qwen provides separate commentary.",
       });
     }
   return map;
@@ -201,7 +204,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
 export async function projectionAccuracy(db: Pool) {
   const jobs = (
     await db.query(
-      "SELECT j.data,j.result,j.completed_at,s.data AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' ORDER BY j.completed_at ASC LIMIT 1000",
+      "SELECT j.data,j.result,j.completed_at,s.data AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' AND j.data->>'method'='statistics-v1' ORDER BY j.completed_at ASC LIMIT 1000",
     )
   ).rows;
   const predictions = new Map<string, any>();
@@ -244,6 +247,6 @@ export async function projectionAccuracy(db: Pool) {
     qwenMae: mae("ai"),
     yahooMae: mae("yahoo"),
     method:
-      "Earliest completed pre-kickoff Qwen estimate versus completed imported results. Lower mean absolute error is better; no improvement is established until measured.",
+      "Earliest completed pre-kickoff statistical estimate versus completed imported results. Lower mean absolute error is better; no improvement is established until measured.",
   };
 }

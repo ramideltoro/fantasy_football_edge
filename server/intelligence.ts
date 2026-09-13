@@ -4,7 +4,6 @@ import { teamBriefFacts } from "../shared/teamBrief.ts";
 import {
   initProjections,
   enqueueProjections,
-  claimProjection,
   saveProjection,
   projectionMap,
   projectionAccuracy,
@@ -33,7 +32,7 @@ export async function installIntelligence(
     "UPDATE intelligence SET status='queued' WHERE status='building'",
   );
   await db.query(
-    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<6",
+    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<7",
   );
   async function enqueue() {
     await db.query(
@@ -74,8 +73,6 @@ export async function installIntelligence(
   setTimeout(() => void tick(), 1000).unref();
   app.get("/api/ai/work", async (q, r) => {
     if (!authorized(q)) return r.sendStatus(401);
-    const projection = await claimProjection(db);
-    if (projection) return r.json({ job: projection });
     const row = (
       await db.query(
         "UPDATE intelligence SET status='analyzing',claimed_at=now() WHERE snapshot_id=(SELECT snapshot_id FROM intelligence WHERE status='ready' OR (status='analyzing' AND claimed_at<now()-interval '10 minutes') ORDER BY snapshot_id DESC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING snapshot_id,data",
@@ -83,6 +80,12 @@ export async function installIntelligence(
     ).rows[0];
     if (!row) return r.json({ job: null });
     const d = row.data;
+    const forecasts = await projectionMap(db, d.season, d.week);
+    for (const p of d.players) {
+      const f = forecasts.get(p.id);
+      p.projection = f?.points ?? p.providerProjection;
+      p.method = f?.points != null ? f.method : 'Yahoo fallback — insufficient verified statistical evidence';
+    }
     const players = d.players.filter((p: any) => d.shortlist.includes(p.id));
     r.json({
       job: {

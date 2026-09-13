@@ -10,7 +10,7 @@ export function applyProjections(
       ...p,
       providerProjected: p.projected,
       projected: valid ? f.points : p.projected,
-      projectionSource: valid ? "Qwen" : "Yahoo fallback",
+      projectionSource: valid ? (f.label || "Qwen") : "Yahoo fallback",
       aiProjection: f || null,
     };
   };

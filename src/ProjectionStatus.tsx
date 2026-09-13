@@ -21,10 +21,10 @@ export function ProjectionStatus() {
   }, []);
   return (
     <section className="panel">
-      <h3>Independent Qwen projections</h3>
+      <h3>Statistical projections</h3>
       <p>
-        Built from online statistics, league scoring and available reporting.
-        Yahoo projections are excluded from Qwen’s input. Experimental estimates
+        Calculated from recent current-season statistics and league scoring.
+        Yahoo projections are excluded from the calculation. Qwen supplies separate news commentary. Experimental estimates
         and illustrative ranges are not guarantees.
       </p>
       <p role="status">
@@ -37,13 +37,13 @@ export function ProjectionStatus() {
           .join(" · ")}
       </p>
       <p>
-        Player views use Qwen when available, otherwise a labeled Yahoo
+        Player views use statistical forecasts when available, otherwise a labeled Yahoo
         fallback. Source links and the estimate’s timestamp are in player
         details.
       </p>
       {d?.accuracy && (
         <p>
-          Scored pregame estimates: {d.accuracy.samples} · Qwen error:{" "}
+          Scored pregame estimates: {d.accuracy.samples} · Statistical error:{" "}
           {d.accuracy.qwenMae?.toFixed(2) ?? "Awaiting results"} · Yahoo error:{" "}
           {d.accuracy.yahooMae?.toFixed(2) ?? "Awaiting results"}.{" "}
           {d.accuracy.method}

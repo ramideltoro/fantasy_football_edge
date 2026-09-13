@@ -194,7 +194,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 6,
+    version: 7,
     scoring: scoring(s),
     newsSources: newsResearch.sources,
     waiverCandidates: recommendations
