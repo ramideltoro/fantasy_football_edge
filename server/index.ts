@@ -1,3 +1,4 @@
+import { completeYahooSnapshot } from "../shared/importCompleteness.ts";
 import { depthCharts } from "./depth.ts";
 import { calibratedForecast } from "../shared/forecast.ts";
 import { leagueOverview, accuracy } from "../shared/analytics.ts";
@@ -192,7 +193,9 @@ app.post("/api/import/request", async (q, r) => {
   await db.query(
     "INSERT INTO refresh_request VALUES(1,now(),null) ON CONFLICT(id) DO UPDATE SET requested_at=CASE WHEN refresh_request.fulfilled_at IS NULL THEN refresh_request.requested_at ELSE now() END, fulfilled_at=null",
   );
-  await db.query("INSERT INTO events(status,message) VALUES('queued','Owner requested a Yahoo refresh.')");
+  await db.query(
+    "INSERT INTO events(status,message) VALUES('queued','Owner requested a Yahoo refresh.')",
+  );
   r.json({
     ok: true,
     message:
@@ -210,6 +213,7 @@ app.get("/api/import/request", async (q, r) => {
   r.json({
     pending: !!row && !row.fulfilled_at,
     requestedAt: row?.requested_at || null,
+    completedAt: row?.fulfilled_at || null,
   });
 });
 app.post("/api/import/heartbeat", async (q, r) => {
@@ -244,7 +248,15 @@ app.get("/api/import/operations", async (q, r) => {
 });
 app.post("/api/import/status", async (q, r) => {
   if (!tokenOK(q)) return r.sendStatus(401);
-  await db.query("INSERT INTO worker_health VALUES(1,now(),$1) ON CONFLICT(id) DO UPDATE SET seen_at=now(),state=$1",[{status:String(q.body.status||'failed').slice(0,40),message:String(q.body.message||'').slice(0,200)}]);
+  await db.query(
+    "INSERT INTO worker_health VALUES(1,now(),$1) ON CONFLICT(id) DO UPDATE SET seen_at=now(),state=$1",
+    [
+      {
+        status: String(q.body.status || "failed").slice(0, 40),
+        message: String(q.body.message || "").slice(0, 200),
+      },
+    ],
+  );
   const status = [
     "ok",
     "failed",
@@ -267,6 +279,13 @@ app.post("/api/import/snapshot", async (q, r) => {
     return r.status(400).json({ error: "Invalid snapshot schema" });
   const s = parsed.data;
   delete s.receivedAt;
+  if (!completeYahooSnapshot(s))
+    return r
+      .status(422)
+      .json({
+        error:
+          "Incomplete Yahoo import. All league and player groups must finish; last complete data retained.",
+      });
   if (
     Date.parse(s.capturedAt) > Date.now() + 300000 ||
     Date.parse(s.capturedAt) < Date.now() - 7 * 86400000
@@ -302,13 +321,14 @@ app.post("/api/import/snapshot", async (q, r) => {
       ]);
       await c.query("INSERT INTO events(status,message) VALUES($1,$2)", [
         "ok",
-        `Snapshot accepted: ${s.players.length} players`,
+        `Complete snapshot saved: ${s.players.length} roster players, ${s.available.length} pool players. Data captured ${s.capturedAt}.`,
       ]);
     }
-    await c.query(
-      "UPDATE refresh_request SET fulfilled_at=now() WHERE id=1 AND fulfilled_at IS NULL AND requested_at <= $1",
-      [s.capturedAt],
-    );
+    if (result.rows.length)
+      await c.query(
+        "UPDATE refresh_request SET fulfilled_at=now() WHERE id=1 AND fulfilled_at IS NULL AND requested_at <= $1",
+        [s.capturedAt],
+      );
     await c.query("COMMIT");
     r.json({ ok: true, duplicate: !result.rows.length });
   } catch (e) {

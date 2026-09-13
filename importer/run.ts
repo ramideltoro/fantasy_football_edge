@@ -196,6 +196,7 @@ async function main() {
       }
       throw lastError;
     }
+    const captureStartedAt = new Date().toISOString();
     await progress("Loading roster");
     if (login)
       await page.goto(config.rosterUrl, {
@@ -291,7 +292,9 @@ async function main() {
           const link = captured.links.find((l) =>
             /^Next \d+$/.test(l.text.trim()),
           );
-          if (!parsed.length || !link) {
+          if (!parsed.length)
+            throw Error("Player page returned no parsed rows");
+          if (!link) {
             next = null;
             break;
           }
@@ -308,7 +311,7 @@ async function main() {
         });
       }
     }
-    const snap = normalize(pages);
+    const snap = normalize(pages, captureStartedAt);
     snap.coverage = [
       ...coverage,
       ...[
@@ -364,13 +367,17 @@ async function main() {
       body: JSON.stringify(snap),
       signal: AbortSignal.timeout(30000),
     });
-    if (!r.ok) throw Error("Snapshot upload rejected");
+    if (!r.ok)
+      throw Error("Complete snapshot upload rejected; previous data retained");
+    const receipt = await r.json();
+    if (receipt.duplicate)
+      throw Error("Duplicate snapshot was not a fresh import");
     fs.writeFileSync(path.join(dir, "last-success"), String(Date.now()), {
       mode: 0o600,
     });
     await report(
       "ok",
-      `Imported ${snap.players.length} roster players and ${pages.length} pages.`,
+      `All Yahoo views refreshed: ${snap.players.length} roster, ${snap.available.length} pool players, ${pages.length} pages. Capture began ${snap.capturedAt}.`,
     );
   } catch (error) {
     if (process.env.EDGE_IMPORT_DEBUG === "1") console.error(error);

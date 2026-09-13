@@ -47,6 +47,7 @@ const tabs = [
 ];
 function App() {
   const refreshing = useRef(false);
+  const [importState, setImportState] = useState<any>(null);
   const [requestMessage, setRequestMessage] = useState("");
   const [requesting, setRequesting] = useState(false);
   const [d, setD] = useState<any>(null),
@@ -130,11 +131,14 @@ function App() {
         const request = await fetch("/api/import/request");
         if (request.ok) {
           const state = await request.json();
+          const ops = await fetch("/api/import/operations");
+          if (ops.ok) setImportState(await ops.json());
           setRequestMessage(
             state.pending
               ? "Refresh pending. Your Mac checks every minute while awake; Yahoo cooldowns still apply."
               : state.requestedAt
-                ? "Requested refresh completed."
+                ? "Last requested refresh completed at " +
+                  new Date(state.completedAt).toLocaleString()
                 : "",
           );
         }
@@ -148,7 +152,7 @@ function App() {
   }
   useEffect(() => {
     void refresh();
-    const t = setInterval(refresh, 60000);
+    const t = setInterval(refresh, 10000);
     return () => clearInterval(t);
   }, []);
   const s = d?.snapshot,
@@ -302,6 +306,19 @@ function App() {
             <span role="status">
               {requestMessage || "Ask your Mac worker to import fresh data."}
             </span>
+          </div>
+        )}
+        {s && (
+          <div className="notice">
+            Yahoo data used by roster, waiver list, recommendations and league:{" "}
+            <strong>{new Date(s.capturedAt).toLocaleString()}</strong>.{" "}
+            {importState?.worker?.state.status === "cooldown"
+              ? "Fresh import blocked by Yahoo until " +
+                new Date(importState.worker.state.retryAt).toLocaleString() +
+                ". Previous data remains displayed."
+              : importState?.request && !importState.request.fulfilled_at
+                ? "Refresh pending or running. These views update together only after every required page finishes."
+                : ""}
           </div>
         )}
         {error && <div className="notice">{error}</div>}
