@@ -3,6 +3,7 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { spawn, type ChildProcess } from "node:child_process";
 import { capture } from "./capture.ts";
 import { normalize, parsePlayers, type PageCapture } from "../shared/model.ts";
 const dir =
@@ -44,6 +45,7 @@ async function main() {
   }
   fs.writeFileSync(lock, String(process.pid), { flag: "wx", mode: 0o600 });
   let context;
+  let awake: ChildProcess | undefined;
   let stage = "starting";
   const progress = async (value: string) => {
     stage = value;
@@ -135,11 +137,19 @@ async function main() {
       Date.now() - last < (boosted ? 15 : 60) * 60000
     )
       return;
+    // Keep an active import awake without preventing screen locking or display sleep.
+    // The assertion expires with this process, including an unexpected exit.
+    if (process.platform === "darwin") {
+      awake = spawn("/usr/bin/caffeinate", ["-i", "-w", String(process.pid)], {
+        stdio: "ignore",
+      });
+      awake.on("error", () => {});
+    }
     context = await chromium.launchPersistentContext(
       path.join(dir, "browser"),
       {
         channel: "chrome",
-        headless: login ? false : config.headless === true,
+        headless: login ? false : config.headless !== false,
         viewport: { width: 1440, height: 1000 },
       },
     );
@@ -423,6 +433,7 @@ async function main() {
     process.exitCode = 1;
   } finally {
     await context?.close().catch(() => {});
+    awake?.kill();
     fs.rmSync(lock, { force: true });
   }
 }
