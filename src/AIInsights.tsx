@@ -72,7 +72,75 @@ export function AIInsights({ owner }: { owner: boolean }) {
       {d && (
         <>
           <section className="panel">
-            <h3>Weekly decision brief</h3>
+            <h3>AI team summary · Week {d.week}</h3>
+            {d.qwen?.teamBrief ? (
+              <>
+                <p>
+                  Qwen’s priorities for your current roster and matchup, using
+                  the latest imported evidence.
+                </p>
+                <ol>
+                  {d.qwen.teamBrief.priorities.map((x: any) => (
+                    <li key={x.key}>
+                      <p>{x.text}</p>
+                    </li>
+                  ))}
+                </ol>
+                <div className="metrics">
+                  {[
+                    "roster",
+                    "matchup",
+                    "risks",
+                    "lineup",
+                    "changes",
+                    "waivers",
+                  ]
+                    .filter(
+                      (key) =>
+                        !d.qwen.teamBrief.priorities.some(
+                          (x: any) => x.key === key,
+                        ),
+                    )
+                    .map((key) => (
+                      <div className="metric" key={key}>
+                        <b>
+                          {
+                            (
+                              {
+                                roster: "Roster assessment",
+                                matchup: "This week’s matchup",
+                                risks: "Availability watch",
+                                lineup: "Lineup opportunity",
+                                changes: "Suggested changes",
+                                waivers: "Waiver strategy",
+                              } as Record<string, string>
+                            )[key]
+                          }
+                        </b>
+                        <p>{d.qwen.teamBrief.facts[key]}</p>
+                      </div>
+                    ))}
+                </div>
+                <p>{d.qwen.teamBrief.facts.uncertainty}</p>
+                <small>
+                  Roster captured {new Date(d.snapshotAt).toLocaleString()} · AI
+                  generated {new Date(d.qwen.generatedAt).toLocaleString()}.
+                  Games may have locked since this analysis; refresh before
+                  acting.
+                </small>
+              </>
+            ) : (
+              <p>
+                Your team briefing is{" "}
+                {state.status === "failed"
+                  ? "unavailable; retry analysis above"
+                  : "being prepared by Qwen"}
+                .
+              </p>
+            )}
+          </section>
+          <section className="panel">
+            <h3>Player actions to review</h3>
             {d.qwen ? (
               <>
                 <p>{d.qwen.summary}</p>

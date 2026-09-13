@@ -26,6 +26,21 @@ export function evidenceFor(p: any) {
   return facts;
 }
 const Output = z.object({
+  priorities: z
+    .array(
+      z.enum([
+        "roster",
+        "matchup",
+        "risks",
+        "lineup",
+        "changes",
+        "waivers",
+        "uncertainty",
+      ]),
+    )
+    .min(1)
+    .max(7)
+    .optional(),
   insights: z
     .array(
       z.object({
@@ -87,6 +102,14 @@ export function groundAnalysis(raw: unknown, data: any) {
       };
     });
   return {
+    teamBrief: data.teamFacts
+      ? {
+          priorities: [
+            ...new Set(parsed.priorities || ["risks", "lineup", "matchup"]),
+          ].map((key) => ({ key, text: data.teamFacts[key] })),
+          facts: data.teamFacts,
+        }
+      : null,
     summary: `Qwen selected ${insights.length} players for review. Explanations below use only supplied evidence; review the suggested lineup and injury flags before acting.`,
     insights,
   };

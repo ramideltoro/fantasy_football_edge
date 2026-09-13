@@ -41,3 +41,10 @@ test("Qwen cannot recommend a rostered player as a waiver addition; duplicate ID
   assert.equal(r.insights.length, 1);
   assert.equal(r.insights[0].action, "monitor");
 });
+test('team priorities use supplied facts and reject invented categories', () => {
+  const input = { insights: [{id:'one',action:'hold',evidence:['projection']}], priorities:['matchup','matchup','risks'] };
+  const d = {...data, teamFacts:{matchup:'No matchup available.',risks:'Check injury flags.'}};
+  const r = groundAnalysis(input,d);
+  assert.deepEqual(r.teamBrief?.priorities,[{key:'matchup',text:'No matchup available.'},{key:'risks',text:'Check injury flags.'}]);
+  assert.throws(() => groundAnalysis({...input,priorities:['guaranteedWin']},d));
+});

@@ -1,3 +1,4 @@
+import { teamBriefFacts } from "../shared/teamBrief.ts";
 import { parse } from "csv-parse/sync";
 import type { Pool } from "pg";
 import type { SnapshotData } from "../shared/model.ts";
@@ -115,7 +116,8 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 1,
+    version: 2,
+    teamFacts: teamBriefFacts(s, lineup),
     snapshotAt: s.capturedAt,
     generatedAt: new Date().toISOString(),
     season: s.season,
