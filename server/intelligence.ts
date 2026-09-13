@@ -1,4 +1,4 @@
-import { evidenceFor, groundAnalysis, waiverCase } from "../shared/groundedAnalysis.ts";
+import { evidenceFor, groundAnalysis, waiverCase, usefulAssessment } from "../shared/groundedAnalysis.ts";
 import type { Express, Request } from "express";
 import type { Pool } from "pg";
 import { research } from "./playerResearch.ts";
@@ -155,8 +155,8 @@ export async function installIntelligence(
       )
     ).rows[0];
     for (const pick of current?.data?.qwen?.waivers || []) {
-      if (!pick.summary || pick.summary.length < 80) {
-        const player=current.data.players.find((p:any)=>p.id===pick.id);
+      const player=current.data.players.find((p:any)=>p.id===pick.id);
+      if (player && !usefulAssessment(pick.summary,player)) {
         if(player) { pick.summary=waiverCase(player,current.data); pick.summaryKind='Evidence summary'; }
       }
     }

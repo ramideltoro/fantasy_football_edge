@@ -67,3 +67,11 @@ test('waiver assessments are bounded and distinct from canonical evidence',()=>{
  assert.match(r.waivers[0].reason,/10.00/);
  assert.throws(()=>groundAnalysis({...base,waivers:[{...row,summary:'x'.repeat(501)}]},d));
 });
+test('inadequate or wrong-position model prose falls back to facts',()=>{
+ const waiver={...p,name:'Test Tight End',position:'TE',id:'waiver',slot:'',available:'FA',headlines:[]};
+ const d={...data,players:[p,waiver],waiverCandidates:['waiver']};
+ const r=groundAnalysis({insights:[{id:'one',action:'hold',evidence:['projection']}],waivers:[{id:'waiver',summary:'Consider Test Tight End (WR) because he has upside, but playing time is uncertain and this remains an experimental recommendation.',evidence:['role'],news:[]}]},d);
+ assert.equal(r.waivers[0].summaryKind,'Evidence summary');
+ assert.match(r.waivers[0].summary,/10.00/);
+ assert.doesNotMatch(r.waivers[0].summary,/\(WR\)/);
+});

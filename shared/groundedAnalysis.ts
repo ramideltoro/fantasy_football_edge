@@ -132,9 +132,9 @@ export function groundAnalysis(raw: unknown, data: any) {
     return {
       id: x.id,
       summary:
-        x.summary && x.summary.length >= 80 ? x.summary : waiverCase(p, data),
+        usefulAssessment(x.summary, p) ? x.summary : waiverCase(p, data),
       summaryKind:
-        x.summary && x.summary.length >= 80
+        usefulAssessment(x.summary, p)
           ? "Qwen interpretation"
           : "Evidence summary",
       reason: [...new Set(["projection", "role", ...x.evidence])]
@@ -198,3 +198,5 @@ export function waiverCase(p: any, data: any) {
     "Compare him with your existing options and check the claim deadline. News coverage alone does not establish an advantage."
   );
 }
+
+export function usefulAssessment(text:any,p:any) { return typeof text==='string' && text.length>=80 && /\b(because|however|but|risk|upside|uncertain|limitation|consider)\b/i.test(text) && !['QB','RB','WR','TE','K','DEF'].some(pos=>pos!==p.position && text.includes('('+pos+')')); }

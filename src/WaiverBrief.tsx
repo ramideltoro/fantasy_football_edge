@@ -101,6 +101,7 @@ export function WaiverBrief({
                       <summary>Facts behind this pick</summary>
                       <p>{x.reason}</p>
                     </details>
+                    {!x.news.length && <details className="ai-evidence"><summary>Related reporting · not cited by Qwen</summary>{d.players.find((player:any)=>player.id===x.id)?.headlines.map((n:any)=><p key={n.url}><a href={n.url} target="_blank" rel="noreferrer">{n.title}</a> · {n.source}</p>)}</details>}
                     {x.news.length ? (
                       <details className="ai-evidence">
                         <summary>{x.news.length} reporting sources</summary>
