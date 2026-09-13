@@ -38,7 +38,7 @@ export async function enqueueProjections(db: Pool, id: string, d: any) {
       })),
     };
     const hash = createHash("sha256")
-      .update(JSON.stringify(input))
+      .update(JSON.stringify({ ...input, refreshWindow: Math.floor(Date.now()/14400000) }))
       .digest("hex");
     await db.query(
       "INSERT INTO projection_jobs(hash,snapshot_id,season,week,data) VALUES($1,$2,$3,$4,$5) ON CONFLICT(hash) DO UPDATE SET snapshot_id=EXCLUDED.snapshot_id",
