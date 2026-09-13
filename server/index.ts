@@ -1,3 +1,4 @@
+import { installIntelligence } from "./intelligence.ts";
 import { unpackSnapshot } from "../shared/importPackage.ts";
 import { completeYahooSnapshot } from "../shared/importCompleteness.ts";
 import { depthCharts } from "./depth.ts";
@@ -508,6 +509,13 @@ setInterval(
   () => void db.query("DELETE FROM sessions WHERE expires_at<now()"),
   3600000,
 ).unref();
+await installIntelligence(
+  app,
+  db,
+  tokenOK,
+  async (q) => (await session(q))?.email === owner,
+  () => newsCache,
+);
 app.use(express.static("dist", { maxAge: "1h" }));
 app.get("/{*path}", (_q, r) => r.sendFile("index.html", { root: "dist" }));
 app.use(

@@ -1,3 +1,4 @@
+import { AIInsights } from "./AIInsights";
 import { ImportOperations } from "./ImportOperations";
 import { useNflDepth, nflRole } from "./nflRole";
 import { WaiverList } from "./WaiverList";
@@ -44,6 +45,7 @@ const tabs = [
   "News & trends",
   "Import health",
   "Yahoo refresh",
+  "AI insights",
 ];
 function App() {
   const refreshing = useRef(false);
@@ -222,6 +224,7 @@ function App() {
                   <ArrowUpRight />,
                   <RefreshCw />,
                   <RefreshCw />,
+                  <Zap />,
                 ][i]
               }
               {t}
@@ -1059,6 +1062,7 @@ function App() {
                 )}
               </Panel>
             )}
+            {tab === "AI insights" && <AIInsights owner={d.owner} />}
             {tab === "Yahoo refresh" && <ImportOperations owner={d.owner} />}
             {tab === "Import health" && (
               <>
