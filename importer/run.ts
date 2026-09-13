@@ -43,6 +43,19 @@ async function main() {
   }
   fs.writeFileSync(lock, String(process.pid), { flag: "wx", mode: 0o600 });
   let context;
+  let stage = "starting";
+  const progress = (value: string) => {
+    stage = value;
+    fs.writeFileSync(
+      path.join(dir, "status.json"),
+      JSON.stringify({
+        status: "running",
+        message: value,
+        time: new Date().toISOString(),
+      }),
+      { mode: 0o600 },
+    );
+  };
   try {
     const login = process.argv.includes("--login");
     const et = new Intl.DateTimeFormat("en-US", {
@@ -86,8 +99,38 @@ async function main() {
         viewport: { width: 1440, height: 1000 },
       },
     );
+    if (!login)
+      await context.route("**/*", (route) =>
+        ["image", "media", "font"].includes(route.request().resourceType())
+          ? route.abort()
+          : route.continue(),
+      );
     const page = context.pages()[0] || (await context.newPage());
-    await page.goto(config.rosterUrl, { waitUntil: "commit", timeout: 60000 });
+    const deadline = Date.now() + 10 * 60000;
+    async function navigate(url: string, selector: string) {
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (Date.now() > deadline) throw Error("Import time limit reached");
+        try {
+          await page.goto(url, { waitUntil: "commit", timeout: 30000 });
+          if (new URL(page.url()).hostname === "login.yahoo.com")
+            throw Error("Yahoo authentication required");
+          await page.locator(selector).waitFor({ timeout: 20000 });
+          return;
+        } catch (error) {
+          lastError = error;
+          if (new URL(page.url()).hostname === "login.yahoo.com") throw error;
+        }
+      }
+      throw lastError;
+    }
+    progress("Loading roster");
+    if (login)
+      await page.goto(config.rosterUrl, {
+        waitUntil: "commit",
+        timeout: 30000,
+      });
+    else await navigate(config.rosterUrl, "#statTable0");
     if (login) {
       console.log(
         "Sign in to Yahoo in this dedicated browser, then close it when finished.",
@@ -135,7 +178,8 @@ async function main() {
         !(url.pathname === root || url.pathname.startsWith(root + "/"))
       )
         throw Error("Invalid import route");
-      await page.goto(url.href, { waitUntil: "commit", timeout: 60000 });
+      progress("Reading " + entry.kind);
+      await navigate(url.href, "#yspmain");
       if (new URL(page.url()).origin !== url.origin)
         throw Error("Yahoo login required");
       await page.locator("#yspmain").waitFor({ timeout: 30000 });
@@ -162,9 +206,8 @@ async function main() {
         const seen = new Set<string>();
         while (next && count < 80 && !seen.has(next)) {
           seen.add(next);
-          await page.goto(next, { waitUntil: "commit", timeout: 60000 });
-          await page.locator("#yspmain").waitFor({ timeout: 30000 });
-          await page.locator("#statselect").waitFor({ timeout: 30000 });
+          progress("Reading " + position + " player page " + (count + 1));
+          await navigate(next, "#statselect");
           const captured = {
             ...(await page.evaluate(capture)),
             kind: "players",
@@ -239,6 +282,7 @@ async function main() {
       ]),
       { mode: 0o600 },
     );
+    progress("Uploading validated snapshot");
     const r = await fetch(config.endpoint + "/api/import/snapshot", {
       method: "POST",
       headers: {
@@ -258,9 +302,14 @@ async function main() {
     );
   } catch (error) {
     if (process.env.EDGE_IMPORT_DEBUG === "1") console.error(error);
+    const needsAuthentication =
+      error instanceof Error &&
+      error.message === "Yahoo authentication required";
     await report(
-      "failed",
-      "Import failed. Check Yahoo login, network connection or page format.",
+      needsAuthentication ? "authentication_required" : "failed",
+      needsAuthentication
+        ? "Yahoo sign-in expired. Reconnect the local browser."
+        : `Import failed during ${stage}. ${error instanceof Error ? error.name : "Error"}. Last good snapshot retained.`,
     );
     process.exitCode = 1;
   } finally {
