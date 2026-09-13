@@ -1,3 +1,4 @@
+import { WaiverList } from "./WaiverList";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -35,6 +36,7 @@ const tabs = [
   "Overview",
   "My roster",
   "Player lab",
+  "Waiver list",
   "Recommendations",
   "League",
   "News & trends",
@@ -205,6 +207,8 @@ function App() {
                   <Activity />,
                   <Users />,
                   <ChartNoAxesCombined />,
+                  <Users />,
+
                   <Zap />,
                   <Shield />,
                   <ArrowUpRight />,
@@ -623,6 +627,9 @@ function App() {
                   )}
                 </div>
               </>
+            )}
+            {tab === "Waiver list" && (
+              <WaiverList pool={pool} onPlayer={setSelected} />
             )}
             {tab === "Recommendations" && (
               <>
