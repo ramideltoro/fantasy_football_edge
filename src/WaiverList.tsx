@@ -62,9 +62,10 @@ export function WaiverList({
     <section className="panel">
       <h3>Waiver list</h3>
       <p className="subtitle">
-        Free agents and players on waivers, ordered by projected points. NFL
-        starter/backup roles come from ESPN depth charts; Unknown means no
-        matching entry. Depth order does not guarantee playing time.
+        Top two Yahoo pages of available W/R/T players, ordered by projected
+        points (up to 50 players). NFL starter/backup roles come from ESPN depth
+        charts; Unknown means no matching entry. Depth order does not guarantee
+        playing time.
       </p>
       <div className="scenario">
         <label>

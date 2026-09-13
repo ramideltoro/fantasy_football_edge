@@ -199,7 +199,7 @@ async function main() {
     const identity = JSON.stringify({
       roster: config.rosterUrl,
       pages: config.pages,
-      full: config.fullPlayerPool,
+      scope: "available-WRT-top2-v1",
     });
     let checkpoint: {
       identity: string;
@@ -268,7 +268,7 @@ async function main() {
       "opponent",
     ];
     for (const entry of config.pages || []) {
-      if (!allowed.includes(entry.kind)) continue;
+      if (!allowed.includes(entry.kind) || entry.kind === "players") continue;
       const url = new URL(entry.url);
       if (
         url.origin !== "https://football.fantasysports.yahoo.com" ||
@@ -280,14 +280,14 @@ async function main() {
     }
     const week = normalize(pages).week;
     const coverage = [];
-    if (config.fullPlayerPool !== false) {
-      for (const position of ["O", "K", "DEF"]) {
+    {
+      for (const position of ["W/R/T"]) {
         const url = new URL(
           root + "/players",
           "https://football.fantasysports.yahoo.com",
         );
         url.search = new URLSearchParams({
-          status: "ALL",
+          status: "A",
           pos: position,
           stat1: "S_PW_" + week,
           sort: "PTS",
@@ -297,7 +297,7 @@ async function main() {
           count = 0,
           rows = 0;
         const seen = new Set<string>();
-        while (next && count < 80 && !seen.has(next)) {
+        while (next && count < 2 && !seen.has(next)) {
           seen.add(next);
           await progress("Reading " + position + " player page " + (count + 1));
           const captured = await readPage(next, "#statselect", "players");
@@ -320,10 +320,10 @@ async function main() {
           next = target.href;
         }
         coverage.push({
-          kind: "players-" + position,
+          kind: "players-WRT-top2",
           pages: count,
           rows,
-          complete: next === null,
+          complete: count === 2 || next === null,
         });
       }
     }

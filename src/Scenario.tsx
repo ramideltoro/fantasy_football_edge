@@ -83,7 +83,7 @@ export function Scenario({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search the imported player pool"
+            placeholder="Search the imported W/R/T shortlist"
           />
           <select
             aria-label="Incoming player"
@@ -99,7 +99,7 @@ export function Scenario({
           </select>
         </label>
       </div>
-      <h3>All trade & waiver candidates</h3>
+      <h3>Imported waiver candidates</h3>
       <p className="subtitle">
         NFL role comes from ESPN depth-chart order, not fantasy start
         percentage. Multiple receivers can be starters; depth order does not
