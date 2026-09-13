@@ -183,6 +183,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
       const p = row.data.players.find((p: any) => p.id === f.id);
       map.set(f.id, {
         ...f,
+        reason: f.points===null ? 'Qwen did not produce a supported independent estimate; Yahoo fallback remains available.' : 'Experimental Qwen estimate: '+f.points.toFixed(2)+' points. Supplied evidence: '+(p.history?.length||0)+' historical games and '+Math.min(1,p.news?.length||0)+' news item. NFL role: '+p.nflRole+'; opponent: '+(p.opponent||'unknown')+'. Prior-season data is context, not current form.',
         generatedAt: row.completed_at,
         team: p.team,
         sources: p.news.map((n: any) => ({
