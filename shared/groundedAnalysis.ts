@@ -131,7 +131,12 @@ export function groundAnalysis(raw: unknown, data: any) {
       throw Error("Unsupported waiver evidence");
     return {
       id: x.id,
-      summary: x.summary || "",
+      summary:
+        x.summary && x.summary.length >= 80 ? x.summary : waiverCase(p, data),
+      summaryKind:
+        x.summary && x.summary.length >= 80
+          ? "Qwen interpretation"
+          : "Evidence summary",
       reason: [...new Set(["projection", "role", ...x.evidence])]
         .map((k) => facts[k])
         .join(" "),
@@ -152,4 +157,44 @@ export function groundAnalysis(raw: unknown, data: any) {
     summary: `Qwen selected ${insights.length} players for review. Explanations below use only supplied evidence; review the suggested lineup and injury flags before acting.`,
     insights,
   };
+}
+
+export function waiverCase(p: any, data: any) {
+  const peers = data.players
+    .filter(
+      (x: any) =>
+        !x.slot && /^(FA|W)/.test(x.available) && x.projection !== null,
+    )
+    .sort((a: any, b: any) => b.projection - a.projection);
+  const rank = peers.findIndex((x: any) => x.id === p.id) + 1;
+  const value =
+    p.projection === null
+      ? "No numerical forecast is available."
+      : p.name +
+        " projects for " +
+        p.projection.toFixed(2) +
+        " points this week" +
+        (rank
+          ? " (rank " +
+            rank +
+            " of " +
+            peers.length +
+            " imported available players with projections)."
+          : ".");
+  const role =
+    p.nflRole === "Starter"
+      ? "His listed NFL starting role makes him worth reviewing for roster depth, although it does not guarantee touches or targets."
+      : p.nflRole === "Backup"
+        ? "His backup role makes playing time the main limitation; treat him as a depth option to investigate rather than a confirmed starter."
+        : "His NFL role is unconfirmed, so verify his expected playing time before adding him.";
+  return (
+    value +
+    " " +
+    role +
+    " " +
+    (p.injury
+      ? "The imported " + p.injury + " designation needs review. "
+      : "") +
+    "Compare him with your existing options and check the claim deadline. News coverage alone does not establish an advantage."
+  );
 }

@@ -61,7 +61,7 @@ test('waiver assessments are bounded and distinct from canonical evidence',()=>{
  const waiver={...p,id:'waiver',slot:'',available:'FA',headlines:[]};
  const d={...data,players:[p,waiver],waiverCandidates:['waiver']};
  const base={insights:[{id:'one',action:'hold',evidence:['projection']}]};
- const row={id:'waiver',summary:'Consider as depth; playing time is uncertain.',evidence:['role'],news:[]};
+ const row={id:'waiver',summary:'Consider as depth based on the supplied projection; playing time is uncertain and the current news does not establish an advantage.',evidence:['role'],news:[]};
  const r=groundAnalysis({...base,waivers:[row]},d);
  assert.equal(r.waivers[0].summary,row.summary);
  assert.match(r.waivers[0].reason,/10.00/);

@@ -52,7 +52,7 @@ async function main() {
     for (const p of context.waiverCandidates || [])
       p.news = p.news.map((n: any) => ({
         title: n.title,
-        excerpt: n.excerpt?.slice(0, 300),
+        excerpt: n.excerpt?.slice(0, 180),
         source: n.source,
         publishedAt: n.publishedAt,
         searchResult: !!n.searchPlayer,
@@ -76,7 +76,7 @@ async function main() {
                   type: "string",
                   enum: (context.waiverCandidates || []).map((p: any) => p.id),
                 },
-                summary: { type: "string", maxLength: 500 },
+                summary: { type: "string", minLength: 80, maxLength: 500 },
                 evidence: {
                   type: "array",
                   minItems: 1,

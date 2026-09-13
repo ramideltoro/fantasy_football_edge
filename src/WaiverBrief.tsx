@@ -94,7 +94,8 @@ export function WaiverBrief({
                       <p>{x.summary || x.reason}</p>
                     </div>
                     <small>
-                      AI interpretation · verify against the evidence below.
+                      {x.summaryKind || "AI interpretation"} · verify against
+                      the evidence below.
                     </small>
                     <details className="ai-evidence">
                       <summary>Facts behind this pick</summary>
