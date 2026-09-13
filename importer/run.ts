@@ -58,6 +58,13 @@ async function main() {
   };
   try {
     const login = process.argv.includes("--login");
+    const cooldownFile = path.join(dir, "retry-after");
+    if (
+      !login &&
+      fs.existsSync(cooldownFile) &&
+      Date.now() < Number(fs.readFileSync(cooldownFile, "utf8"))
+    )
+      return;
     const et = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
       weekday: "short",
@@ -112,13 +119,42 @@ async function main() {
       for (let attempt = 0; attempt < 2; attempt++) {
         if (Date.now() > deadline) throw Error("Import time limit reached");
         try {
-          await page.goto(url, { waitUntil: "commit", timeout: 30000 });
+          const response = await page.goto(url, {
+            waitUntil: "commit",
+            timeout: 30000,
+          });
+          if (response && [429, 999].includes(response.status())) {
+            const retry = response.headers()["retry-after"];
+            const retryAt =
+              retry && /^\d+$/.test(retry)
+                ? Date.now() + Number(retry) * 1000
+                : Date.parse(retry || "");
+            fs.writeFileSync(
+              cooldownFile,
+              String(Math.max(Date.now() + 3600000, retryAt || 0)),
+              { mode: 0o600 },
+            );
+            throw Error("Yahoo temporarily blocked requests");
+          }
           if (new URL(page.url()).hostname === "login.yahoo.com")
             throw Error("Yahoo authentication required");
-          await page.locator(selector).waitFor({ timeout: 20000 });
+          await page.locator(selector).waitFor({
+            timeout: 20000,
+            state: selector === "#statselect" ? "attached" : "visible",
+          });
+          await page.waitForFunction(
+            () => document.readyState !== "loading",
+            {},
+            { timeout: 20000 },
+          );
           return;
         } catch (error) {
           lastError = error;
+          if (
+            error instanceof Error &&
+            error.message === "Yahoo temporarily blocked requests"
+          )
+            throw error;
           if (new URL(page.url()).hostname === "login.yahoo.com") throw error;
         }
       }
@@ -309,7 +345,10 @@ async function main() {
       needsAuthentication ? "authentication_required" : "failed",
       needsAuthentication
         ? "Yahoo sign-in expired. Reconnect the local browser."
-        : `Import failed during ${stage}. ${error instanceof Error ? error.name : "Error"}. Last good snapshot retained.`,
+        : error instanceof Error &&
+            error.message === "Yahoo temporarily blocked requests"
+          ? "Yahoo temporarily blocked requests. Imports paused for at least one hour; last good snapshot retained."
+          : `Import failed during ${stage}. ${error instanceof Error ? error.name : "Error"}. Last good snapshot retained.`,
     );
     process.exitCode = 1;
   } finally {
