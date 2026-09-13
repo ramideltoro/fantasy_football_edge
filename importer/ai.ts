@@ -48,10 +48,67 @@ async function main() {
           ];
         }),
     );
+    const context = JSON.parse(job.prompt);
     const body = {
       model: "qwen2.5:3b",
       stream: false,
-      format: "json",
+      format: {
+        type: "object",
+        required: ["priorities", "insights"],
+        properties: {
+          priorities: {
+            type: "array",
+            minItems: 3,
+            maxItems: 4,
+            items: {
+              type: "string",
+              enum: Object.keys(
+                context.teamFacts || { roster: 1, matchup: 1, lineup: 1 },
+              ),
+            },
+          },
+          insights: {
+            type: "array",
+            minItems: 1,
+            maxItems: 6,
+            items: {
+              type: "object",
+              required: ["id", "action", "evidence"],
+              properties: {
+                id: {
+                  type: "string",
+                  enum: context.players.map((p: any) => p.id),
+                },
+                action: {
+                  type: "string",
+                  enum: [
+                    "start",
+                    "consider waiver",
+                    "hold",
+                    "avoid",
+                    "monitor",
+                  ],
+                },
+                evidence: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 2,
+                  items: {
+                    type: "string",
+                    enum: [
+                      "role",
+                      "projection",
+                      "availability",
+                      "samples",
+                      "injury",
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       messages: [
         {
           role: "system",
