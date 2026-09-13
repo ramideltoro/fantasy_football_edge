@@ -42,6 +42,8 @@ const tabs = [
 ];
 function App() {
   const refreshing = useRef(false);
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requesting, setRequesting] = useState(false);
   const [d, setD] = useState<any>(null),
     [error, setError] = useState(""),
     [tab, setTab] = useState("Overview"),
@@ -116,7 +118,21 @@ function App() {
     try {
       const r = await fetch("/api/dashboard");
       if (!r.ok) throw Error();
-      setD(await r.json());
+      const body = await r.json();
+      setD(body);
+      if (body.owner) {
+        const request = await fetch("/api/import/request");
+        if (request.ok) {
+          const state = await request.json();
+          setRequestMessage(
+            state.pending
+              ? "Refresh pending. Your Mac checks every minute while awake; Yahoo cooldowns still apply."
+              : state.requestedAt
+                ? "Requested refresh completed."
+                : "",
+          );
+        }
+      }
       setError("");
     } catch {
       setError("Unable to load your dashboard. Try refreshing.");
@@ -244,12 +260,41 @@ function App() {
             <button
               className="icon"
               onClick={refresh}
-              aria-label="Refresh data"
+              aria-label="Reload dashboard"
             >
               <RefreshCw size={18} />
             </button>
           </div>
         </header>
+        {d?.owner && (
+          <div className="notice">
+            <button
+              disabled={requesting}
+              onClick={async () => {
+                setRequesting(true);
+                try {
+                  const r = await fetch("/api/import/request", {
+                    method: "POST",
+                  });
+                  if (!r.ok) throw Error();
+                  const body = await r.json();
+                  setRequestMessage(body.message);
+                } catch {
+                  setRequestMessage(
+                    "Unable to queue refresh. Please try again.",
+                  );
+                } finally {
+                  setRequesting(false);
+                }
+              }}
+            >
+              {requesting ? "Queuing…" : "Refresh from Yahoo"}
+            </button>{" "}
+            <span role="status">
+              {requestMessage || "Ask your Mac worker to import fresh data."}
+            </span>
+          </div>
+        )}
         {error && <div className="notice">{error}</div>}
         {!d && !error ? (
           <div className="loading">Loading your edge…</div>

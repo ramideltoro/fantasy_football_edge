@@ -1,3 +1,4 @@
+import { depthCharts } from "./depth.ts";
 import { calibratedForecast } from "../shared/forecast.ts";
 import { leagueOverview, accuracy } from "../shared/analytics.ts";
 import express from "express";
@@ -21,6 +22,9 @@ const owner = "rami.deltoro@gmail.com";
 const secure = origin.startsWith("https:");
 await db.query(
   `CREATE TABLE IF NOT EXISTS snapshots(id bigserial primary key,hash text unique not null,captured_at timestamptz not null,data jsonb not null);CREATE TABLE IF NOT EXISTS forecasts(snapshot_id bigint references snapshots(id),created_at timestamptz default now(),data jsonb not null);CREATE TABLE IF NOT EXISTS sessions(id text primary key,data jsonb not null,expires_at timestamptz not null);CREATE TABLE IF NOT EXISTS events(id bigserial primary key,created_at timestamptz default now(),status text not null,message text not null);`,
+);
+await db.query(
+  "CREATE TABLE IF NOT EXISTS refresh_request(id integer primary key CHECK(id=1), requested_at timestamptz not null, fulfilled_at timestamptz)",
 );
 app.disable("x-powered-by");
 app.set("trust proxy", "loopback");
@@ -68,6 +72,13 @@ const tokenOK = (q: express.Request) => {
     crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(got))
   );
 };
+app.get("/api/depth", async (_q, r) => {
+  try {
+    r.json(await depthCharts());
+  } catch {
+    r.status(503).json({ error: "Depth charts unavailable" });
+  }
+});
 app.get("/healthz", async (_q, r) => {
   await db.query("SELECT 1");
   r.json({ status: "ok" });
@@ -172,6 +183,31 @@ app.post("/api/logout", async (q, r) => {
   r.clearCookie("edge_session");
   r.json({ ok: true });
 });
+app.post("/api/import/request", async (q, r) => {
+  if (q.headers.origin !== origin || (await session(q))?.email !== owner)
+    return r.sendStatus(403);
+  await db.query(
+    "INSERT INTO refresh_request VALUES(1,now(),null) ON CONFLICT(id) DO UPDATE SET requested_at=CASE WHEN refresh_request.fulfilled_at IS NULL THEN refresh_request.requested_at ELSE now() END, fulfilled_at=null",
+  );
+  r.json({
+    ok: true,
+    message:
+      "Refresh queued. Your Mac checks within one minute while awake. Yahoo cooldowns still apply.",
+  });
+});
+app.get("/api/import/request", async (q, r) => {
+  if (!tokenOK(q) && (await session(q))?.email !== owner)
+    return r.sendStatus(401);
+  const row = (
+    await db.query(
+      "SELECT requested_at,fulfilled_at FROM refresh_request WHERE id=1",
+    )
+  ).rows[0];
+  r.json({
+    pending: !!row && !row.fulfilled_at,
+    requestedAt: row?.requested_at || null,
+  });
+});
 app.post("/api/import/status", async (q, r) => {
   if (!tokenOK(q)) return r.sendStatus(401);
   const status = ["ok", "failed", "authentication_required"].includes(
@@ -230,6 +266,10 @@ app.post("/api/import/snapshot", async (q, r) => {
         `Snapshot accepted: ${s.players.length} players`,
       ]);
     }
+    await c.query(
+      "UPDATE refresh_request SET fulfilled_at=now() WHERE id=1 AND fulfilled_at IS NULL AND requested_at <= $1",
+      [s.capturedAt],
+    );
     await c.query("COMMIT");
     r.json({ ok: true, duplicate: !result.rows.length });
   } catch (e) {

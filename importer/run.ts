@@ -65,6 +65,16 @@ async function main() {
       Date.now() < Number(fs.readFileSync(cooldownFile, "utf8"))
     )
       return;
+    let requested = false;
+    if (!login) {
+      try {
+        const response = await fetch(config.endpoint + "/api/import/request", {
+          headers: { Authorization: "Bearer " + config.token },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (response.ok) requested = (await response.json()).pending === true;
+      } catch {}
+    }
     const et = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
       weekday: "short",
@@ -95,6 +105,7 @@ async function main() {
     if (
       !login &&
       !process.argv.includes("--force") &&
+      !requested &&
       Date.now() - last < (boosted ? 15 : 60) * 60000
     )
       return;
