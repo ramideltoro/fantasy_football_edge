@@ -1,3 +1,5 @@
+import { ProjectionValue } from "./ProjectionValue";
+import { PositionSuggestions } from "./PositionSuggestions";
 import { WaiverBrief } from "./WaiverBrief";
 import { useEffect, useMemo, useState } from "react";
 import type { PlayerData } from "../shared/model";
@@ -61,13 +63,14 @@ export function WaiverList({
   }
   return (
     <>
+      <PositionSuggestions pool={pool} onPlayer={onPlayer} />
       <WaiverBrief pool={pool} onPlayer={onPlayer} />
       <section className="panel">
         <h3>Waiver list</h3>
         <p className="subtitle">
-          Top two Yahoo pages of available W/R/T players, ordered by projected
-          points (up to 50 players). NFL starter/backup roles come from ESPN
-          depth charts; Unknown means no matching entry. Depth order does not
+          Two Yahoo W/R/T pages plus the first QB, K and DEF pages, sorted by
+          weekly projected points. NFL starter/backup roles come from ESPN depth
+          charts; Unknown means no matching entry. Depth order does not
           guarantee playing time.
         </p>
         <div className="scenario">
@@ -132,7 +135,9 @@ export function WaiverList({
                     <td>{p.availability}</td>
                     <td>{p.status || "—"}</td>
                     <td>{p.bye ?? "—"}</td>
-                    <td>{p.projected?.toFixed(1) ?? "—"}</td>
+                    <td>
+                      <ProjectionValue player={p} />
+                    </td>
                     <td>{p.rosterPct == null ? "—" : p.rosterPct + "%"}</td>
                   </tr>
                 );

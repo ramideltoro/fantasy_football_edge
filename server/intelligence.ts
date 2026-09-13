@@ -1,4 +1,20 @@
-import { evidenceFor, groundAnalysis, waiverCase, usefulAssessment } from "../shared/groundedAnalysis.ts";
+import { applyProjections } from "../shared/applyProjections.ts";
+import { advice } from "../shared/advice.ts";
+import { teamBriefFacts } from "../shared/teamBrief.ts";
+import {
+  initProjections,
+  enqueueProjections,
+  claimProjection,
+  saveProjection,
+  projectionMap,
+  projectionAccuracy,
+} from "./projections.ts";
+import {
+  evidenceFor,
+  groundAnalysis,
+  waiverCase,
+  usefulAssessment,
+} from "../shared/groundedAnalysis.ts";
 import type { Express, Request } from "express";
 import type { Pool } from "pg";
 import { research } from "./playerResearch.ts";
@@ -9,6 +25,7 @@ export async function installIntelligence(
   isOwner: (q: Request) => Promise<boolean>,
   news: () => any[],
 ) {
+  await initProjections(db);
   await db.query(
     `CREATE TABLE IF NOT EXISTS research_cache(url text primary key,updated_at timestamptz not null,data jsonb not null);CREATE TABLE IF NOT EXISTS intelligence(snapshot_id bigint primary key references snapshots(id),status text not null default 'queued',created_at timestamptz,claimed_at timestamptz,data jsonb,error text);`,
   );
@@ -16,7 +33,7 @@ export async function installIntelligence(
     "UPDATE intelligence SET status='queued' WHERE status='building'",
   );
   await db.query(
-    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<5",
+    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<6",
   );
   async function enqueue() {
     await db.query(
@@ -40,6 +57,7 @@ export async function installIntelligence(
         [row.snapshot_id],
       );
       const d = await research(db, row.data, news());
+      await enqueueProjections(db, row.snapshot_id, d);
       await db.query(
         "UPDATE intelligence SET status='ready',data=$2,created_at=now(),error=null WHERE snapshot_id=$1",
         [row.snapshot_id, d],
@@ -56,6 +74,8 @@ export async function installIntelligence(
   setTimeout(() => void tick(), 1000).unref();
   app.get("/api/ai/work", async (q, r) => {
     if (!authorized(q)) return r.sendStatus(401);
+    const projection = await claimProjection(db);
+    if (projection) return r.json({ job: projection });
     const row = (
       await db.query(
         "UPDATE intelligence SET status='analyzing',claimed_at=now() WHERE snapshot_id=(SELECT snapshot_id FROM intelligence WHERE status='ready' OR (status='analyzing' AND claimed_at<now()-interval '10 minutes') ORDER BY snapshot_id DESC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING snapshot_id,data",
@@ -93,6 +113,38 @@ export async function installIntelligence(
           })),
         }),
       },
+    });
+  });
+  app.post("/api/ai/projection-result", async (q, r) => {
+    if (!authorized(q)) return r.sendStatus(401);
+    try {
+      return r
+        .status((await saveProjection(db, q.body)) ? 200 : 409)
+        .json({ ok: true });
+    } catch {
+      return r.status(400).json({ error: "Invalid projection result" });
+    }
+  });
+  app.get("/api/projections", async (_q, r) => {
+    const latest = (
+      await db.query(
+        "SELECT data FROM snapshots ORDER BY captured_at DESC LIMIT 1",
+      )
+    ).rows[0]?.data;
+    if (!latest) return r.json({ players: [], status: [] });
+    const map = await projectionMap(db, latest.season, latest.week);
+    const status = (
+      await db.query(
+        "SELECT status,count(*)::int FROM projection_jobs WHERE season=$1 AND week=$2 GROUP BY status",
+        [latest.season, latest.week],
+      )
+    ).rows;
+    return r.json({
+      players: [...map.values()],
+      accuracy: await projectionAccuracy(db),
+      status,
+      week: latest.week,
+      snapshotAt: latest.capturedAt,
     });
   });
   app.post("/api/ai/result", async (q, r) => {
@@ -144,7 +196,7 @@ export async function installIntelligence(
   app.get("/api/intelligence", async (_q, r) => {
     const latest = (
       await db.query(
-        "SELECT id,captured_at FROM snapshots ORDER BY captured_at DESC LIMIT 1",
+        "SELECT id,captured_at,data FROM snapshots ORDER BY captured_at DESC LIMIT 1",
       )
     ).rows[0];
     if (!latest) return r.json({ status: "waiting", data: null });
@@ -154,10 +206,47 @@ export async function installIntelligence(
         [latest.id],
       )
     ).rows[0];
+    if (current?.data) {
+      const forecasts = await projectionMap(
+        db,
+        current.data.season,
+        current.data.week,
+      );
+      for (const p of current.data.players) {
+        const f = forecasts.get(p.id);
+        if (f?.team === p.team && f.points !== null) {
+          p.projection = f.points;
+          p.method = f.method;
+          p.aiProjection = f;
+        } else {
+          p.projection = p.providerProjection;
+          p.method =
+            "Yahoo fallback — independent Qwen forecast pending or unavailable";
+        }
+      }
+      const active = applyProjections(latest.data, forecasts);
+      current.data.lineup = advice(active);
+      if (current.data.qwen?.teamBrief) {
+        const facts = teamBriefFacts(active, current.data.lineup);
+        current.data.qwen.teamBrief.facts = facts;
+        current.data.qwen.teamBrief.priorities =
+          current.data.qwen.teamBrief.priorities.map((p: any) => ({
+            ...p,
+            text: facts[p.key],
+          }));
+      }
+    }
     for (const pick of current?.data?.qwen?.waivers || []) {
-      const player=current.data.players.find((p:any)=>p.id===pick.id);
-      if (player && !usefulAssessment(pick.summary,player)) {
-        if(player) { pick.summary=waiverCase(player,current.data); pick.summaryKind='Evidence summary'; }
+      const player = current.data.players.find((p: any) => p.id === pick.id);
+      if (
+        player &&
+        (pick.summaryKind === "Evidence summary" ||
+          !usefulAssessment(pick.summary, player))
+      ) {
+        if (player) {
+          pick.summary = waiverCase(player, current.data);
+          pick.summaryKind = "Evidence summary";
+        }
       }
     }
     const runs = (

@@ -1,3 +1,5 @@
+import {projectionMap} from "./projections.ts";
+import {applyProjections} from "../shared/applyProjections.ts";
 import { installIntelligence } from "./intelligence.ts";
 import { unpackSnapshot } from "../shared/importPackage.ts";
 import { completeYahooSnapshot } from "../shared/importCompleteness.ts";
@@ -366,7 +368,8 @@ app.get("/api/dashboard", async (q, r) => {
       events: [],
       news: newsCache,
     });
-  const s = row.data as SnapshotData;
+  const raw = row.data as SnapshotData;
+  const s = applyProjections(raw,await projectionMap(db,raw.season,raw.week));
   const historicalRows = (
     await db.query(
       "SELECT data FROM snapshots WHERE data->>'season'=$1 AND data->'team'->>'id'=$2 AND data->'league'->>'id'=$3 ORDER BY captured_at DESC LIMIT 1000",
@@ -392,7 +395,7 @@ app.get("/api/dashboard", async (q, r) => {
     league: leagueOverview(s, privateView),
     accuracy: accuracy(historicalRows.map((x) => x.data)),
     calibrated: calibratedForecast(
-      s.players,
+      raw.players,
       accuracy(historicalRows.map((x) => x.data)),
     ),
     events: privateView

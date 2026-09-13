@@ -1,3 +1,4 @@
+import { ProjectionStatus } from "./ProjectionStatus";
 import { TeamBrief } from "./TeamBrief";
 import { DecisionCharts } from "./DecisionCharts";
 import { useEffect, useState } from "react";
@@ -42,6 +43,7 @@ export function AIInsights({ owner }: { owner: boolean }) {
     fmt = (x: number | null | undefined) => (x == null ? "—" : x.toFixed(2));
   return (
     <>
+      <ProjectionStatus />
       <section className="panel">
         <h3>Qwen player intelligence</h3>
         <p>
@@ -116,11 +118,11 @@ export function AIInsights({ owner }: { owner: boolean }) {
           <section className="panel">
             <h3>Start, waiver and risk comparison</h3>
             <p>
-              Ranked by projected points. The experimental model blends 75%
-              Yahoo with 25% recent league-scored performance only after three
-              current-season games, with a bounded matchup adjustment. Until
-              then, it retains Yahoo's forecast. Prior-season games are shown as
-              context only. No proven improvement is claimed.
+              Ranked by active projected points: independent Qwen estimates when
+              ready, otherwise Yahoo fallback. Qwen uses online statistical
+              history and reporting, without receiving Yahoo’s projection.
+              Prior-season games remain historical context; superiority is not
+              established.
             </p>
             <label>
               Search player
@@ -251,8 +253,9 @@ export function AIInsights({ owner }: { owner: boolean }) {
           <section className="panel">
             <h3>Suggested lineup</h3>
             <p>
-              Maximizes model projections within your eligible, unlocked roster
-              slots. Review injuries and current game locks before acting.
+              Uses the research-time lineup within your eligible, unlocked
+              roster slots. Review injuries and current game locks before
+              acting.
             </p>
             {d.lineup.lineup.map((x: any) => (
               <div className="watch" key={x.slot + x.playerId}>
@@ -265,7 +268,7 @@ export function AIInsights({ owner }: { owner: boolean }) {
             ))}
           </section>
           <section className="panel">
-            <h3>Prediction accuracy versus Yahoo</h3>
+            <h3>Historical statistical-blend accuracy versus Yahoo</h3>
             <div className="metrics">
               <div className="metric">
                 <span>Scored forecasts</span>

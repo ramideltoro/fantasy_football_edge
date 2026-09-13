@@ -115,7 +115,7 @@ async function main() {
               properties: {
                 id: {
                   type: "string",
-                  enum: context.players.map((p: any) => p.id),
+                  enum: (context.players || []).map((p: any) => p.id),
                 },
                 action: {
                   type: "string",
@@ -157,6 +157,11 @@ async function main() {
       ],
       options: { temperature: 0.1, num_predict: 1600, num_ctx: 8192 },
     };
+    if (job.kind === "projection") {
+      body.format = job.format;
+      body.options.num_predict = 1200;
+      body.options.num_ctx = 8192;
+    }
     const raw = await new Promise<string>((resolve, reject) => {
       const child = spawn(
         "/usr/bin/ssh",
@@ -205,12 +210,18 @@ async function main() {
       child.stdin.end(JSON.stringify(body));
     });
     const result = JSON.parse(JSON.parse(raw).message.content);
-    const saved = await fetch(config.endpoint + "/api/ai/result", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ id: job.id, result }),
-      signal: AbortSignal.timeout(15000),
-    });
+    const saved = await fetch(
+      config.endpoint +
+        (job.kind === "projection"
+          ? "/api/ai/projection-result"
+          : "/api/ai/result"),
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ id: job.id, result }),
+        signal: AbortSignal.timeout(15000),
+      },
+    );
     if (!saved.ok) throw Error("Result rejected");
     fs.writeFileSync(
       path.join(home, "ai-status.json"),

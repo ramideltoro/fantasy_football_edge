@@ -199,7 +199,7 @@ async function main() {
     const identity = JSON.stringify({
       roster: config.rosterUrl,
       pages: config.pages,
-      scope: "available-WRT-top2-v1",
+      scope: "available-all-positions-v2",
     });
     let checkpoint: {
       identity: string;
@@ -281,7 +281,7 @@ async function main() {
     const week = normalize(pages).week;
     const coverage = [];
     {
-      for (const position of ["W/R/T"]) {
+      for (const position of ["W/R/T", "QB", "K", "DEF"]) {
         const url = new URL(
           root + "/players",
           "https://football.fantasysports.yahoo.com",
@@ -297,7 +297,11 @@ async function main() {
           count = 0,
           rows = 0;
         const seen = new Set<string>();
-        while (next && count < 2 && !seen.has(next)) {
+        while (
+          next &&
+          count < (position === "W/R/T" ? 2 : 1) &&
+          !seen.has(next)
+        ) {
           seen.add(next);
           await progress("Reading " + position + " player page " + (count + 1));
           const captured = await readPage(next, "#statselect", "players");
@@ -320,10 +324,13 @@ async function main() {
           next = target.href;
         }
         coverage.push({
-          kind: "players-WRT-top2",
+          kind:
+            position === "W/R/T"
+              ? "players-WRT-top2"
+              : `players-${position}-top1`,
           pages: count,
           rows,
-          complete: count === 2 || next === null,
+          complete: count === (position === "W/R/T" ? 2 : 1) || next === null,
         });
       }
     }

@@ -1,6 +1,10 @@
 import { XMLParser } from "fast-xml-parser";
 import type { Pool } from "pg";
 export const waiverFeeds = [
+  [
+    "Reddit r/fantasyfootball · unverified opinion",
+    "https://www.reddit.com/r/fantasyfootball/new/.rss",
+  ],
   ["Draft Sharks · player news", "https://www.draftsharks.com/rss/shark-bites"],
   ["Draft Sharks · injuries", "https://www.draftsharks.com/rss/injury-news"],
   ["Draft Sharks · advice", "https://www.draftsharks.com/rss/advice"],
@@ -13,7 +17,7 @@ export async function waiverNews(db: Pool, names: string[] = []) {
   const articles: any[] = [],
     sources: any[] = [];
   const searches = names
-    .slice(0, 12)
+    .slice(0, 30)
     .map((name) => [
       "News search: " + name,
       "https://news.google.com/rss/search?q=" +
@@ -36,7 +40,8 @@ export async function waiverNews(db: Pool, names: string[] = []) {
         if (!r.ok) throw Error();
         const text = await r.text();
         if (text.length > 3000000) throw Error();
-        const items = new XMLParser().parse(text).rss?.channel?.item;
+        const parsed = new XMLParser({ ignoreAttributes: false }).parse(text);
+        const items = parsed.rss?.channel?.item || parsed.feed?.entry;
         const plain = (v: any) =>
           typeof v === "string"
             ? v
@@ -48,12 +53,14 @@ export async function waiverNews(db: Pool, names: string[] = []) {
           .slice(0, 60)
           .flatMap((x: any) => {
             const title = plain(x.title),
-              excerpt = plain(x.description).slice(0, 650),
-              publishedAt = Date.parse(x.pubDate);
+              excerpt = plain(
+                x.description || x.content?.["#text"] || x.content,
+              ).slice(0, 650),
+              publishedAt = Date.parse(x.pubDate || x.published || x.updated);
             if (
               !title ||
-              typeof x.link !== "string" ||
-              !x.link.startsWith("https://") ||
+              typeof (x.link?.["@_href"] || x.link) !== "string" ||
+              !(x.link?.["@_href"] || x.link).startsWith("https://") ||
               !Number.isFinite(publishedAt)
             )
               return [];
@@ -65,7 +72,7 @@ export async function waiverNews(db: Pool, names: string[] = []) {
                     : x.source?.["#text"] || source,
                 title: title.slice(0, 250),
                 excerpt,
-                url: x.link,
+                url: x.link?.["@_href"] || x.link,
                 publishedAt: new Date(publishedAt).toISOString(),
               },
             ];

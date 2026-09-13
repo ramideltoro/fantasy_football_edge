@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {validateForecasts} from '../server/projections.ts';import {applyProjections} from '../shared/applyProjections.ts';
+const input={week:1,players:[{id:'one',history:[{week:18}],news:[]}]};
+const row={id:'one',points:12,low:5,high:20,reason:'Historical context; uncertain role.'};
+test('independent forecasts require complete IDs, coherent ranges and usable evidence',()=>{assert.equal(validateForecasts({forecasts:[row]},input)[0].points,12);assert.throws(()=>validateForecasts({forecasts:[{...row,low:13}]},input));assert.throws(()=>validateForecasts({forecasts:[]},input));assert.equal(validateForecasts({forecasts:[row]},{week:1,players:[{id:'one',history:[],news:[]} ]})[0].points,null);});
+test('display projection preserves Yahoo and rejects a mismatched NFL team',()=>{const s:any={players:[{id:'one',team:'TB',projected:10}],available:[]};const good=applyProjections(s,new Map([['one',{points:12,team:'TB'}]]));assert.equal(good.players[0].projected,12);assert.equal(good.players[0].providerProjected,10);assert.equal(applyProjections(s,new Map([['one',{points:12,team:'NYG'}]])).players[0].projectionSource,'Yahoo fallback');assert.equal(s.players[0].projected,10);});

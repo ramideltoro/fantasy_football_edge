@@ -19,7 +19,7 @@ export function teamBriefFacts(s: SnapshotData, lineup: any) {
           ? `The suggested eligible lineup increases projected points by ${lineup.delta.toFixed(2)} across unlocked slots. This is not an increase in win probability.`
           : "Your current unlocked lineup already matches the highest projected total available on your roster."
       : "A complete eligible lineup could not be calculated; check empty slots and player eligibility.",
-    waivers: `The imported candidate list contains ${s.available.length} players from the first two available W/R/T pages sorted by weekly projection. It does not cover QB, kicker, defense, or the full waiver pool. Check claim timing, cost and a suitable roster spot before adding anyone.`,
+    waivers: `The imported candidate list contains ${s.available.length} players from two W/R/T pages and one page each for QB, kicker and defense, sorted by weekly projection. This is a limited pool. Check claim timing, cost and a suitable roster spot before adding anyone.`,
     uncertainty:
       "Numerical forecasts are experimental and may retain Yahoo’s baseline. No measured improvement over Yahoo or reliable win probability is established. Refresh before lineup deadlines and check official inactive reports.",
   };

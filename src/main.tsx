@@ -1,3 +1,4 @@
+import { ProjectionValue, ProjectionDetails } from "./ProjectionValue";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
@@ -133,6 +134,7 @@ function App() {
       if (!r.ok) throw Error();
       const body = await r.json();
       setD(body);
+      setSelected(current => current ? [...(body.snapshot?.players || []),...(body.snapshot?.available || [])].find(p=>p.id===current.id) || current : null);
       if (body.owner) {
         const request = await fetch("/api/import/request");
         if (request.ok) {
@@ -317,7 +319,7 @@ function App() {
         )}
         {s && (
           <div className="notice">
-            Yahoo data used by roster, waiver list, recommendations and league:{" "}
+            Yahoo roster data; player projections use Qwen when ready, otherwise labeled Yahoo fallback:{" "}
             <strong>{new Date(s.capturedAt).toLocaleString()}</strong>.{" "}
             {importState?.worker?.state.status === "cooldown"
               ? "Fresh import blocked by Yahoo until " +
@@ -552,7 +554,7 @@ function App() {
                             <p>
                               {p.position} · {p.team}
                             </p>
-                            <strong>{fmt(p.projected)}</strong>
+                            <strong><ProjectionValue player={p}/></strong>
                             <p>projected · {fmt(p.actual)} actual</p>
                             <button
                               onClick={() =>
@@ -632,7 +634,7 @@ function App() {
                               </small>
                             </td>
                             <td>{p.slot || "Pool"}</td>
-                            <td className="amber">{fmt(p.projected)}</td>
+                            <td className="amber"><ProjectionValue player={p}/></td>
                             <td>{fmt(p.actual)}</td>
                             <td>
                               {p.rosterPct == null ? "—" : p.rosterPct + "%"}
@@ -1201,7 +1203,7 @@ function App() {
               <Metric
                 label="Projected"
                 value={fmt(selected.projected)}
-                note="Imported Yahoo forecast"
+                note={selected.projectionSource || "Yahoo"}
               />
               <Metric
                 label="Actual"
@@ -1211,7 +1213,8 @@ function App() {
                 }
               />
             </div>
-            <h3>Projection movement · week {s.week}</h3>
+            <ProjectionDetails player={selected}/>
+            <h3>Historical Yahoo projection movement · week {s.week}</h3>
             {series(selected).length > 1 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={series(selected)}>

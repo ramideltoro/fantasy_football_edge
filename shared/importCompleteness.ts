@@ -9,6 +9,9 @@ export const requiredYahooCoverage = [
   "draft",
   "research",
   "players-WRT-top2",
+  "players-QB-top1",
+  "players-K-top1",
+  "players-DEF-top1",
 ];
 export function completeYahooSnapshot(s: SnapshotData) {
   return (

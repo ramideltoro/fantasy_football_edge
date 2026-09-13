@@ -131,12 +131,12 @@ export function groundAnalysis(raw: unknown, data: any) {
       throw Error("Unsupported waiver evidence");
     return {
       id: x.id,
-      summary:
-        usefulAssessment(x.summary, p) ? x.summary : waiverCase(p, data),
-      summaryKind:
-        usefulAssessment(x.summary, p)
-          ? "Qwen interpretation"
-          : "Evidence summary",
+      summary: usefulAssessment(x.summary, p)
+        ? x.summary!
+        : waiverCase(p, data),
+      summaryKind: usefulAssessment(x.summary, p)
+        ? "Qwen interpretation"
+        : "Evidence summary",
       reason: [...new Set(["projection", "role", ...x.evidence])]
         .map((k) => facts[k])
         .join(" "),
@@ -199,4 +199,15 @@ export function waiverCase(p: any, data: any) {
   );
 }
 
-export function usefulAssessment(text:any,p:any) { return typeof text==='string' && text.length>=80 && /\b(because|however|but|risk|upside|uncertain|limitation|consider)\b/i.test(text) && !['QB','RB','WR','TE','K','DEF'].some(pos=>pos!==p.position && text.includes('('+pos+')')); }
+export function usefulAssessment(text: any, p: any) {
+  return (
+    typeof text === "string" &&
+    text.length >= 80 &&
+    /\b(because|however|but|risk|upside|uncertain|limitation|consider)\b/i.test(
+      text,
+    ) &&
+    !["QB", "RB", "WR", "TE", "K", "DEF"].some(
+      (pos) => pos !== p.position && text.includes("(" + pos + ")"),
+    )
+  );
+}

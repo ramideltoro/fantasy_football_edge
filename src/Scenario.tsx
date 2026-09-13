@@ -83,7 +83,7 @@ export function Scenario({
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search the imported W/R/T shortlist"
+            placeholder="Search the imported player pool"
           />
           <select
             aria-label="Incoming player"
