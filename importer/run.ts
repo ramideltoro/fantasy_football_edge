@@ -1,3 +1,4 @@
+import { packSnapshot } from "../shared/importPackage.ts";
 import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
@@ -372,14 +373,17 @@ async function main() {
       ]),
       { mode: 0o600 },
     );
-    await progress("Uploading validated snapshot");
+    const archive = packSnapshot(snap);
+    await progress(
+      `Uploading one ZIP package (${Math.ceil(archive.length / 1024)} KB)`,
+    );
     const r = await fetch(config.endpoint + "/api/import/snapshot", {
       method: "POST",
       headers: {
         Authorization: "Bearer " + config.token,
-        "Content-Type": "application/json",
+        "Content-Type": "application/zip",
       },
-      body: JSON.stringify(snap),
+      body: archive,
       signal: AbortSignal.timeout(30000),
     });
     if (!r.ok)
@@ -387,6 +391,7 @@ async function main() {
     const receipt = await r.json();
     if (receipt.duplicate)
       throw Error("Duplicate snapshot was not a fresh import");
+    fs.rmSync(checkpointFile, { force: true });
     fs.writeFileSync(path.join(dir, "last-success"), String(Date.now()), {
       mode: 0o600,
     });

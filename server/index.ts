@@ -1,3 +1,4 @@
+import { unpackSnapshot } from "../shared/importPackage.ts";
 import { completeYahooSnapshot } from "../shared/importCompleteness.ts";
 import { depthCharts } from "./depth.ts";
 import { calibratedForecast } from "../shared/forecast.ts";
@@ -272,72 +273,82 @@ app.post("/api/import/status", async (q, r) => {
   ]);
   r.json({ ok: true });
 });
-app.post("/api/import/snapshot", async (q, r) => {
-  if (!tokenOK(q)) return r.sendStatus(401);
-  const parsed = Snapshot.safeParse(q.body);
-  if (!parsed.success)
-    return r.status(400).json({ error: "Invalid snapshot schema" });
-  const s = parsed.data;
-  delete s.receivedAt;
-  if (!completeYahooSnapshot(s))
-    return r
-      .status(422)
-      .json({
+app.post(
+  "/api/import/snapshot",
+  express.raw({ type: "application/zip", limit: "8mb" }),
+  async (q, r) => {
+    if (!tokenOK(q)) return r.sendStatus(401);
+    let payload = q.body;
+    if (q.is("application/zip")) {
+      try {
+        payload = await unpackSnapshot(q.body);
+      } catch {
+        return r.status(400).json({ error: "Invalid ZIP snapshot package" });
+      }
+    }
+    const parsed = Snapshot.safeParse(payload);
+    if (!parsed.success)
+      return r.status(400).json({ error: "Invalid snapshot schema" });
+    const s = parsed.data;
+    delete s.receivedAt;
+    if (!completeYahooSnapshot(s))
+      return r.status(422).json({
         error:
           "Incomplete Yahoo import. All league and player groups must finish; last complete data retained.",
       });
-  if (
-    Date.parse(s.capturedAt) > Date.now() + 300000 ||
-    Date.parse(s.capturedAt) < Date.now() - 7 * 86400000
-  )
-    return r.status(400).json({ error: "Invalid capture time" });
-  const hash = crypto
-    .createHash("sha256")
-    .update(JSON.stringify(s))
-    .digest("hex");
-  s.receivedAt = new Date().toISOString();
-  const c = await db.connect();
-  try {
-    await c.query("BEGIN");
-    const result = await c.query(
-      "INSERT INTO snapshots(hash,captured_at,data) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING id",
-      [hash, s.capturedAt, s],
-    );
-    if (result.rows.length) {
-      await c.query("INSERT INTO forecasts(snapshot_id,data) VALUES($1,$2)", [
-        result.rows[0].id,
-        {
-          week: s.week,
-          season: s.season,
-          players: s.players
-            .filter(
-              (p) =>
-                !p.locked &&
-                (!p.kickoffAt || Date.parse(p.kickoffAt) > Date.now()),
-            )
-            .map((p) => ({ id: p.id, projected: p.projected })),
-          advice: advice(s),
-        },
-      ]);
-      await c.query("INSERT INTO events(status,message) VALUES($1,$2)", [
-        "ok",
-        `Complete snapshot saved: ${s.players.length} roster players, ${s.available.length} pool players. Data captured ${s.capturedAt}.`,
-      ]);
-    }
-    if (result.rows.length)
-      await c.query(
-        "UPDATE refresh_request SET fulfilled_at=now() WHERE id=1 AND fulfilled_at IS NULL AND requested_at <= $1",
-        [s.capturedAt],
+    if (
+      Date.parse(s.capturedAt) > Date.now() + 300000 ||
+      Date.parse(s.capturedAt) < Date.now() - 7 * 86400000
+    )
+      return r.status(400).json({ error: "Invalid capture time" });
+    const hash = crypto
+      .createHash("sha256")
+      .update(JSON.stringify(s))
+      .digest("hex");
+    s.receivedAt = new Date().toISOString();
+    const c = await db.connect();
+    try {
+      await c.query("BEGIN");
+      const result = await c.query(
+        "INSERT INTO snapshots(hash,captured_at,data) VALUES($1,$2,$3) ON CONFLICT DO NOTHING RETURNING id",
+        [hash, s.capturedAt, s],
       );
-    await c.query("COMMIT");
-    r.json({ ok: true, duplicate: !result.rows.length });
-  } catch (e) {
-    await c.query("ROLLBACK");
-    throw e;
-  } finally {
-    c.release();
-  }
-});
+      if (result.rows.length) {
+        await c.query("INSERT INTO forecasts(snapshot_id,data) VALUES($1,$2)", [
+          result.rows[0].id,
+          {
+            week: s.week,
+            season: s.season,
+            players: s.players
+              .filter(
+                (p) =>
+                  !p.locked &&
+                  (!p.kickoffAt || Date.parse(p.kickoffAt) > Date.now()),
+              )
+              .map((p) => ({ id: p.id, projected: p.projected })),
+            advice: advice(s),
+          },
+        ]);
+        await c.query("INSERT INTO events(status,message) VALUES($1,$2)", [
+          "ok",
+          `Complete snapshot saved: ${s.players.length} roster players, ${s.available.length} pool players. Data captured ${s.capturedAt}.`,
+        ]);
+      }
+      if (result.rows.length)
+        await c.query(
+          "UPDATE refresh_request SET fulfilled_at=now() WHERE id=1 AND fulfilled_at IS NULL AND requested_at <= $1",
+          [s.capturedAt],
+        );
+      await c.query("COMMIT");
+      r.json({ ok: true, duplicate: !result.rows.length });
+    } catch (e) {
+      await c.query("ROLLBACK");
+      throw e;
+    } finally {
+      c.release();
+    }
+  },
+);
 app.get("/api/dashboard", async (q, r) => {
   const row = (
     await db.query(
