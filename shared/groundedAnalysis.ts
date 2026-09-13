@@ -26,6 +26,16 @@ export function evidenceFor(p: any) {
   return facts;
 }
 const Output = z.object({
+  waivers: z
+    .array(
+      z.object({
+        id: z.string(),
+        evidence: z.array(z.string()).min(1).max(3),
+        news: z.array(z.number().int().min(0).max(2)).max(3),
+      }),
+    )
+    .max(5)
+    .optional(),
   priorities: z
     .array(
       z.enum([
@@ -101,7 +111,32 @@ export function groundAnalysis(raw: unknown, data: any) {
             : "Experimental blend; no measured improvement over Yahoo is established.",
       };
     });
+  const waivers = [
+    ...new Map((parsed.waivers || []).map((x) => [x.id, x])).values(),
+  ].map((x) => {
+    const p = data.players.find((p: any) => p.id === x.id);
+    if (
+      !p ||
+      !data.waiverCandidates?.includes(x.id) ||
+      p.slot ||
+      !/^(FA|W)/.test(p.available)
+    )
+      throw Error("Unavailable waiver candidate");
+    const facts = evidenceFor(p);
+    if (
+      x.evidence.some((k) => !facts[k]) ||
+      x.news.some((i) => !p.headlines[i])
+    )
+      throw Error("Unsupported waiver evidence");
+    return {
+      id: x.id,
+      reason: x.evidence.map((k) => facts[k]).join(" "),
+      news: [...new Set(x.news)].map((i) => p.headlines[i]),
+      projection: p.projection,
+    };
+  });
   return {
+    waivers,
     teamBrief: data.teamFacts
       ? {
           priorities: [

@@ -1,3 +1,4 @@
+import { waiverNews, matchingNews } from "./waiverNews.ts";
 import { teamBriefFacts } from "../shared/teamBrief.ts";
 import { parse } from "csv-parse/sync";
 import type { Pool } from "pg";
@@ -7,6 +8,19 @@ import { depthCharts } from "./depth.ts";
 import { advice } from "../shared/advice.ts";
 const root = "https://github.com/nflverse/nflverse-data/releases/download/";
 export async function research(db: Pool, s: SnapshotData, news: any[]) {
+  const newsResearch = await waiverNews(
+    db,
+    s.available
+      .filter(
+        (p) =>
+          !p.locked &&
+          p.bye !== s.week &&
+          !["O", "IR", "PUP", "SUSP"].includes(p.status),
+      )
+      .sort((a, b) => (b.projected ?? -Infinity) - (a.projected ?? -Infinity))
+      .slice(0, 12)
+      .map((p) => p.name),
+  );
   const sources: any[] = [];
   async function csv(path: string) {
     const url = root + path;
@@ -87,9 +101,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
             : rank > 1
               ? "Backup"
               : "Unknown",
-      headlines: news
-        .filter((n) => n.title.toLowerCase().includes(p.name.toLowerCase()))
-        .slice(0, 3),
+      headlines: matchingNews(p.name, newsResearch.articles),
     };
   });
   const map = new Map(players.map((p) => [p.id, p.projection]));
@@ -116,7 +128,13 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 2,
+    version: 4,
+    newsSources: newsResearch.sources,
+    waiverCandidates: recommendations
+      .filter((p) => !p.slot && /^(FA|W)/.test(p.available))
+      .filter((p, i) => i < 12 || p.headlines.length > 0)
+      .slice(0, 20)
+      .map((p) => p.id),
     teamFacts: teamBriefFacts(s, lineup),
     snapshotAt: s.capturedAt,
     generatedAt: new Date().toISOString(),

@@ -54,8 +54,37 @@ async function main() {
       stream: false,
       format: {
         type: "object",
-        required: ["priorities", "insights"],
+        required: ["priorities", "insights", "waivers"],
         properties: {
+          waivers: {
+            type: "array",
+            minItems: 0,
+            maxItems: 5,
+            items: {
+              type: "object",
+              required: ["id", "evidence", "news"],
+              properties: {
+                id: {
+                  type: "string",
+                  enum: (context.waiverCandidates || []).map((p: any) => p.id),
+                },
+                evidence: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 2,
+                  items: {
+                    type: "string",
+                    enum: ["role", "projection", "availability", "injury"],
+                  },
+                },
+                news: {
+                  type: "array",
+                  maxItems: 2,
+                  items: { type: "integer", minimum: 0, maximum: 2 },
+                },
+              },
+            },
+          },
           priorities: {
             type: "array",
             minItems: 3,
@@ -117,7 +146,7 @@ async function main() {
         },
         { role: "user", content: job.prompt },
       ],
-      options: { temperature: 0.1, num_predict: 1000, num_ctx: 8192 },
+      options: { temperature: 0.1, num_predict: 1600, num_ctx: 16384 },
     };
     const raw = await new Promise<string>((resolve, reject) => {
       const child = spawn(

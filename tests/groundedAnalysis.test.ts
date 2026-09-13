@@ -48,3 +48,12 @@ test('team priorities use supplied facts and reject invented categories', () => 
   assert.deepEqual(r.teamBrief?.priorities,[{key:'matchup',text:'No matchup available.'},{key:'risks',text:'Check injury flags.'}]);
   assert.throws(() => groundAnalysis({...input,priorities:['guaranteedWin']},d));
 });
+test('waiver picks reject owned players and nonexistent news citations',()=>{
+ const waiver={...p,id:'waiver',slot:'',available:'FA',headlines:[{title:'Report',url:'https://example.com/report'}]};
+ const d={...data,players:[p,waiver],waiverCandidates:['waiver']};
+ const base={insights:[{id:'one',action:'hold',evidence:['projection']}]};
+ assert.throws(()=>groundAnalysis({...base,waivers:[{id:'one',evidence:['role'],news:[]}]},d));
+ assert.throws(()=>groundAnalysis({...base,waivers:[{id:'waiver',evidence:['role'],news:[2]}]},d));
+ const r=groundAnalysis({...base,waivers:[{id:'waiver',evidence:['role'],news:[0]}]},d);
+ assert.equal(r.waivers[0].news[0].url,'https://example.com/report');
+});
