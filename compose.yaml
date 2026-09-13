@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: edge
+      POSTGRES_USER: edge
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - edge-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U edge -d edge]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  web:
+    build: .
+    environment:
+      APP_ORIGIN: https://fantasy.ramideltoro.com
+      DATABASE_URL: postgres://edge:${DB_PASSWORD}@db:5432/edge
+      IMPORT_TOKEN: ${IMPORT_TOKEN}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    ports:
+      - 127.0.0.1:3102:3100
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  edge-db:

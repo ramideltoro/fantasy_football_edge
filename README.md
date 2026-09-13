@@ -1,0 +1,49 @@
+# Fantasy Football Edge
+
+An amber fantasy-football command center with a provider-independent snapshot API, local Yahoo browser imports, PostgreSQL history, lineup optimization and prospective forecast evaluation.
+
+Production: https://fantasy.ramideltoro.com  
+Documentation: https://github.com/ramideltoro/fantasy_football_edge_wiki
+
+## Develop
+
+Requires Node.js 24+, PostgreSQL 17+, and Chrome on the importing Mac.
+
+```sh
+npm ci
+npm test
+npm run build
+DATABASE_URL=postgres://user:password@localhost/edge npm start
+# In another terminal for frontend development:
+npm run dev
+```
+
+Set `APP_ORIGIN`, `DATABASE_URL`, `IMPORT_TOKEN` (at least 32 random characters), `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` in the server environment. Never commit credentials. Google callback is `/auth/google/callback`; only verified `rami.deltoro@gmail.com` can access private league sections.
+
+## Local importer
+
+Private configuration belongs in `~/Library/Application Support/FantasyFootballEdge/config.json`. It contains the portal endpoint, import token, Yahoo roster URL and explicitly selected read-only league pages. See the documentation repository for the schema. Yahoo cookies stay in the sibling `browser` directory.
+
+```sh
+npm run login:yahoo
+npm run import -- --force
+npm run install:importer
+```
+
+The launch agent checks every 15 minutes. Normal imports are throttled to hourly; imported kickoff windows and conservative football windows use 15 minutes. The Mac must be awake and online. A reauthentication requirement stops the run and preserves the last successful snapshot.
+
+## Modules
+
+- `src`: responsive React dashboard, Recharts graphs, roster and comparison views.
+- `shared/model.ts`: versioned canonical schema and Yahoo DOM adapter.
+- `shared/advice.ts`: lineup optimization with eligibility, bye, injury and kickoff locks.
+- `shared/analytics.ts`: privacy-aware league summaries and prospective forecast scoring.
+- `server`: Express API, PostgreSQL persistence, Google OIDC, RSS headline ingestion.
+- `importer`: local Playwright reader and macOS launch-agent installer.
+- `tests`: validation, privacy, lineup and forecast tests.
+
+## Deploy
+
+Use `compose.yaml` with a private `.env` containing `DB_PASSWORD`, `IMPORT_TOKEN` and Google OAuth settings. Web binds only to VPS loopback port 3102; PostgreSQL has no published port. Put an HTTPS reverse proxy in front. Back up the database volume before upgrades. `GET /healthz` checks database connectivity.
+
+All recommendations are advisory. Yahoo projections and imported Yahoo matchup probabilities are labeled as such. Accuracy appears only after a forecast was stored before game start and a completed result arrives. No Yahoo lineup, transaction or trade write operation is implemented.

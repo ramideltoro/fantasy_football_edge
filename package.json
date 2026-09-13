@@ -1,0 +1,40 @@
+{
+  "name": "fantasy-football-edge",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "start": "tsx server/index.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "import": "tsx importer/run.ts",
+    "login:yahoo": "tsx importer/run.ts --login",
+    "install:importer": "tsx importer/install.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "fast-xml-parser": "^5.2.5",
+    "helmet": "^8.1.0",
+    "jose": "^6.1.0",
+    "lucide-react": "^0.544.0",
+    "pg": "^8.16.3",
+    "playwright": "^1.55.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "recharts": "^3.2.0",
+    "tsx": "^4.20.5",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.1",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  }
+}

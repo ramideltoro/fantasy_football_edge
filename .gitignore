@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.log
+*.bundle
+captures.json
+config.json
+.DS_Store
