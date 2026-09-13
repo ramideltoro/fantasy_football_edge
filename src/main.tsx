@@ -1,3 +1,4 @@
+import { useNflDepth, nflRole } from "./nflRole";
 import { WaiverList } from "./WaiverList";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
@@ -55,6 +56,7 @@ function App() {
     [historyError, setHistoryError] = useState(false),
     [pageIndex, setPageIndex] = useState(0),
     [compare, setCompare] = useState<string[]>([]);
+  const rosterDepth = useNflDepth(tab === "My roster");
   useEffect(() => {
     setPageIndex(0);
   }, [tab, query]);
@@ -542,6 +544,7 @@ function App() {
                   <table>
                     <thead>
                       <tr>
+                        {tab === "My roster" && <th>NFL starter / backup</th>}
                         <th>Compare</th>
                         <th>Player</th>
                         <th>Slot</th>
@@ -557,6 +560,21 @@ function App() {
                         .slice(pageIndex * 50, (pageIndex + 1) * 50)
                         .map((p) => (
                           <tr key={p.id}>
+                            {tab === "My roster" && (
+                              <td>
+                                {nflRole(p, rosterDepth).source ? (
+                                  <a
+                                    href={nflRole(p, rosterDepth).source}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {nflRole(p, rosterDepth).label}
+                                  </a>
+                                ) : (
+                                  nflRole(p, rosterDepth).label
+                                )}
+                              </td>
+                            )}
                             <td>
                               <input
                                 type="checkbox"
