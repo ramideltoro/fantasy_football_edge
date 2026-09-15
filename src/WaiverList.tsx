@@ -1,3 +1,4 @@
+import {useAnalysis} from "./useAnalysis";
 import { ProjectionValue } from "./ProjectionValue";
 import { PositionSuggestions } from "./PositionSuggestions";
 import { WaiverBrief } from "./WaiverBrief";
@@ -10,6 +11,8 @@ export function WaiverList({
   pool: PlayerData[];
   onPlayer: (p: PlayerData) => void;
 }) {
+  const analysis=useAnalysis();
+  const qwen=analysis?.data?.qwen||analysis?.previousQwen;
   const [depth, setDepth] = useState<any>(null),
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
@@ -109,7 +112,7 @@ export function WaiverList({
                 <th>Availability</th>
                 <th>Injury status</th>
                 <th>Bye</th>
-                <th>Projected points</th>
+                <th>Qwen score / 100</th><th>Yahoo points / fallback</th><th>Statistical points</th>
                 <th>Rostered %</th>
               </tr>
             </thead>
@@ -136,7 +139,8 @@ export function WaiverList({
                     <td>{p.status || "—"}</td>
                     <td>{p.bye ?? "—"}</td>
                     <td>
-                      <ProjectionValue player={p} />
+                      {qwen?.waivers?.find((x:any)=>x.id===p.id)?.score??"Not scored"}<small>{analysis?.qwenUpdated?"Current":"Not updated"}</small>
+                    </td><td>{(p.providerProjected??p.projected)?.toFixed(2)??"—"}</td><td>{p.aiProjection?.points?.toFixed(2)??"—"}
                     </td>
                     <td>{p.rosterPct == null ? "—" : p.rosterPct + "%"}</td>
                   </tr>

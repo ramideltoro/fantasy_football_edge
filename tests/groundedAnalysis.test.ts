@@ -75,3 +75,12 @@ test('inadequate or wrong-position model prose falls back to facts',()=>{
  assert.match(r.waivers[0].summary,/10.00/);
  assert.doesNotMatch(r.waivers[0].summary,/\(WR\)/);
 });
+test('six position scores remain separate from fantasy projections and are bounded',()=>{
+ const positions=['QB','K','DEF','RB','WR','TE'];
+ const candidates=positions.map(position=>({...p,id:position,position,slot:'',available:'FA',headlines:[]}));
+ const d={...data,players:[p,...candidates],waiverCandidates:positions};
+ const raw={insights:[{id:'one',action:'hold',evidence:['projection']}],waivers:positions.map(id=>({id,score:80,evidence:['role'],news:[]}))};
+ const r=groundAnalysis(raw,d);
+ assert.equal(r.waivers.length,6);assert.equal(r.waivers[0].score,80);assert.equal(r.waivers[0].projection,10);
+ assert.throws(()=>groundAnalysis({...raw,waivers:[{...raw.waivers[0],score:101}]},d));
+});

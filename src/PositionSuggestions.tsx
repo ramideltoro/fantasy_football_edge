@@ -1,61 +1,11 @@
-import type { PlayerData } from "../shared/model";
-import { ProjectionValue } from "./ProjectionValue";
-export function PositionSuggestions({
-  pool,
-  onPlayer,
-}: {
-  pool: PlayerData[];
-  onPlayer: (p: PlayerData) => void;
-}) {
-  return (
-    <section className="panel ai-brief">
-      <h3>Quarterback, kicker & defense options</h3>
-      <p>
-        Top three eligible imported options at each position, ranked by the
-        active projection. Qwen estimates are experimental; pending estimates
-        retain a labeled Yahoo fallback. Check roster fit and claim timing.
-      </p>
-      <div className="ai-card-grid">
-        {["QB", "K", "DEF"].map((pos) => (
-          <article className="ai-pick" key={pos}>
-            <h4>
-              {pos === "K"
-                ? "Kickers"
-                : pos === "DEF"
-                  ? "Team defenses"
-                  : "Quarterbacks"}
-            </h4>
-            {pool
-              .filter(
-                (p) =>
-                  p.position === pos &&
-                  /^(FA|W)/.test(p.availability) &&
-                  !p.locked &&
-                  (!p.kickoffAt || Date.parse(p.kickoffAt) > Date.now()) &&
-                  !["O", "IR", "PUP", "SUSP"].includes(p.status),
-              )
-              .sort(
-                (a, b) =>
-                  (b.projected ?? -Infinity) - (a.projected ?? -Infinity),
-              )
-              .slice(0, 3)
-              .map((p) => (
-                <div className="ai-evidence" key={p.id}>
-                  <button onClick={() => onPlayer(p)}>{p.name}</button>
-                  <ProjectionValue player={p} />
-                  <p>
-                    {p.aiProjection?.points !== null && p.aiProjection?.reason
-                      ? p.aiProjection.reason
-                      : "Independent Qwen estimate pending or unavailable; this ranking currently uses Yahoo."}
-                  </p>
-                </div>
-              ))}
-            {!pool.some((p) => p.position === pos) && (
-              <p>Waiting for the first {pos} page import.</p>
-            )}
-          </article>
-        ))}
-      </div>
-    </section>
-  );
+import type {PlayerData} from '../shared/model';
+import {useAnalysis} from './useAnalysis';
+export function PositionSuggestions({pool,onPlayer}:{pool:PlayerData[];onPlayer:(p:PlayerData)=>void}){
+ const state=useAnalysis(), q=state?.data?.qwen||state?.previousQwen;
+ const picks=q?.waivers||[];
+ const current=state?.qwenUpdated;
+ const names:Record<string,string>={QB:'Quarterbacks',K:'Kickers',DEF:'Defenses',RB:'Running backs',WR:'Wide receivers',TE:'Tight ends'};
+ return <section className="panel ai-brief"><h3>Recommendations by position</h3><p>Qwen score is a subjective waiver priority out of 100, not fantasy points or win probability. Yahoo and statistical point forecasts are separate. When Qwen has no suggestion, the available statistical shortlist remains visible.</p>
+ {Object.entries(names).map(([pos,label])=>{const eligible=pool.filter(p=>p.position===pos&&/^(FA|W)/.test(p.availability)&&!p.locked&&(!p.kickoffAt||Date.parse(p.kickoffAt)>Date.now())&&p.bye!==state?.data?.week&&!['O','IR','PUP','SUSP'].includes(p.status));const ranked=eligible.sort((a,b)=>{const qa=picks.find((x:any)=>x.id===a.id),qb=picks.find((x:any)=>x.id===b.id);return (qb?.score??-1)-(qa?.score??-1)||(b.projected??-Infinity)-(a.projected??-Infinity)}).slice(0,3);
+ return <article key={pos} className="ai-pick"><h4>{label}</h4><div className="table-wrap"><table><thead><tr><th>Player</th><th>Qwen score / 100</th><th>Yahoo points / fallback</th><th>Statistical points</th><th>Why consider this player?</th></tr></thead><tbody>{ranked.map(p=>{const pick=picks.find((x:any)=>x.id===p.id);return <tr key={p.id}><td><button onClick={()=>onPlayer(p)}>{p.name}</button><small>{p.team} · {p.availability}</small></td><td>{pick?.score??'Not scored'}{pick&&<small>{current?'Updated':'Not updated'} · {q.generatedAt?new Date(q.generatedAt).toLocaleString():'Previous run'}</small>}</td><td>{(p.providerProjected??p.projected)?.toFixed(2)??'—'}</td><td>{p.aiProjection?.points?.toFixed(2)??'Insufficient history'}</td><td>{pick?.summary||`Statistical shortlist: ${p.name} is an available ${pos}, ranked by the current point forecast. ${p.status?'Injury designation: '+p.status+'. ':''}Compare roster fit, bye week and claim timing; no Qwen assessment is available for this player.`}{pick&&!current&&<small>Previous opinion; verify against current news and availability.</small>}</td></tr>})}</tbody></table></div>{!ranked.length&&<p>No eligible imported candidates at this position. Refresh Yahoo or review availability and kickoff locks.</p>}</article>})}</section>
 }

@@ -204,7 +204,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
 export async function projectionAccuracy(db: Pool) {
   const jobs = (
     await db.query(
-      "SELECT j.data,j.result,j.completed_at,s.data AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' AND j.data->>'method'='statistics-v1' ORDER BY j.completed_at ASC LIMIT 1000",
+      "SELECT j.data,j.result,j.completed_at,s.data - 'sections' AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' AND j.data->>'method'='statistics-v1' ORDER BY j.completed_at ASC LIMIT 1000",
     )
   ).rows;
   const predictions = new Map<string, any>();
@@ -228,7 +228,7 @@ export async function projectionAccuracy(db: Pool) {
   const outcomes = new Map<string, number>();
   for (const { data: s } of (
     await db.query(
-      "SELECT data FROM snapshots ORDER BY captured_at ASC LIMIT 1000",
+      "SELECT data - 'sections' AS data FROM snapshots ORDER BY captured_at ASC LIMIT 1000",
     )
   ).rows)
     for (const p of [...s.players, ...s.available])

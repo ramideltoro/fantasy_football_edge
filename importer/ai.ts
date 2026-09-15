@@ -24,6 +24,10 @@ async function main() {
     Authorization: "Bearer " + config.token,
     "Content-Type": "application/json",
   };
+  let stage = 'Checking for analysis work';
+  const progress = async (value:string) => {stage=value;await fetch(config.endpoint+'/api/ai/progress',{method:'POST',headers,body:JSON.stringify({stage,job:job?.id}),signal:AbortSignal.timeout(5000)}).catch(()=>{});};
+  await progress(stage);
+  const pulse=setInterval(()=>void progress(stage),15000);
   try {
     const response = await fetch(config.endpoint + "/api/ai/work", {
       headers,
@@ -67,15 +71,16 @@ async function main() {
           waivers: {
             type: "array",
             minItems: 0,
-            maxItems: 5,
+            maxItems: 6,
             items: {
               type: "object",
-              required: ["id", "summary", "evidence", "news"],
+              required: ["id", "score", "summary", "evidence", "news"],
               properties: {
                 id: {
                   type: "string",
                   enum: (context.waiverCandidates || []).map((p: any) => p.id),
                 },
+                score: { type: "number", minimum: 0, maximum: 100 },
                 summary: { type: "string", minLength: 80, maxLength: 500 },
                 evidence: {
                   type: "array",
@@ -162,6 +167,7 @@ async function main() {
       body.options.num_predict = 1200;
       body.options.num_ctx = 8192;
     }
+    await progress('Qwen generating roster and six-position waiver analysis; waiting for inference');
     const raw = await new Promise<string>((resolve, reject) => {
       const child = spawn(
         "/usr/bin/ssh",
@@ -209,6 +215,7 @@ async function main() {
       });
       child.stdin.end(JSON.stringify(body));
     });
+    await progress('Validating Qwen JSON and uploading recommendations');
     const result = JSON.parse(JSON.parse(raw).message.content);
     const saved = await fetch(
       config.endpoint +
@@ -223,6 +230,7 @@ async function main() {
       },
     );
     if (!saved.ok) throw Error("Result rejected");
+    await progress("Analysis saved successfully");
     fs.writeFileSync(
       path.join(home, "ai-status.json"),
       JSON.stringify({
@@ -232,7 +240,8 @@ async function main() {
       }),
       { mode: 0o600 },
     );
-  } catch {
+  } catch (error) {
+    await progress(error instanceof Error && error.message === "Qwen unavailable" ? "Qwen server connection unavailable; previous suggestions retained. Automatic retry is bounded." : "Analysis failed during " + stage + "; previous suggestions retained");
     fs.writeFileSync(
       path.join(home, "ai-status.json"),
       JSON.stringify({ status: "failed", time: new Date().toISOString() }),
@@ -246,6 +255,7 @@ async function main() {
         signal: AbortSignal.timeout(15000),
       }).catch(() => {});
   } finally {
+    clearInterval(pulse);
     fs.rmSync(lock, { force: true });
   }
 }

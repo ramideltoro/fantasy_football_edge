@@ -1,5 +1,5 @@
 import { DecisionCharts } from "./DecisionCharts";
-import { useEffect, useState } from "react";
+import {useAnalysis} from "./useAnalysis";
 import type { PlayerData } from "../shared/model";
 export function WaiverBrief({
   pool,
@@ -8,31 +8,10 @@ export function WaiverBrief({
   pool: PlayerData[];
   onPlayer: (p: PlayerData) => void;
 }) {
-  const [state, setState] = useState<any>(null),
-    [error, setError] = useState(false);
-  useEffect(() => {
-    const c = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
-    async function read() {
-      try {
-        const r = await fetch("/api/intelligence", { signal: c.signal });
-        if (!r.ok) throw Error();
-        setState(await r.json());
-        setError(false);
-      } catch {
-        if (!c.signal.aborted) setError(true);
-      } finally {
-        if (!c.signal.aborted) timer = setTimeout(read, 10000);
-      }
-    }
-    void read();
-    return () => {
-      c.abort();
-      clearTimeout(timer);
-    };
-  }, []);
+  const state=useAnalysis();
+  const error=false;
   const d = state?.data,
-    picks = d?.qwen?.waivers;
+    picks = (d?.qwen || state?.previousQwen)?.waivers;
   return (
     <section className="panel ai-brief">
       <div className="ai-heading">
@@ -44,14 +23,13 @@ export function WaiverBrief({
       </div>
       <p>
         Players to consider, ranked by Qwen using projected points, NFL roles
-        and recent reporting. Research covers the top 12 eligible imported
-        candidates plus players with matching news, up to 20. Predictions and
+        and recent reporting. Research covers up to two candidates for each of the six positions. Predictions and
         reported opinions are uncertain.
       </p>
       <p role="status">
         {error
           ? "Unable to refresh analysis."
-          : `Analysis: ${state?.status || "loading"}`}
+          : `Analysis: ${state?.status || "loading"}. ${state?.qwenUpdated?"Updated":"Not updated — previous suggestions retained"}`}
       </p>
       {picks ? (
         <>
@@ -60,7 +38,7 @@ export function WaiverBrief({
             claim deadlines before making a move; these are suggestions, not
             automatic transactions.
           </p>
-          <DecisionCharts data={d} />
+          {d && <DecisionCharts data={d} />}
           <ol className="ai-card-grid">
             {picks.map((x: any, rank: number) => {
               const p = pool.find((p) => p.id === x.id);
@@ -101,7 +79,7 @@ export function WaiverBrief({
                       <summary>Facts behind this pick</summary>
                       <p>{x.reason}</p>
                     </details>
-                    {!x.news.length && <details className="ai-evidence"><summary>Related reporting · not cited by Qwen</summary>{d.players.find((player:any)=>player.id===x.id)?.headlines.map((n:any)=><p key={n.url}><a href={n.url} target="_blank" rel="noreferrer">{n.title}</a> · {n.source}</p>)}</details>}
+                    {!x.news.length && <details className="ai-evidence"><summary>Related reporting · not cited by Qwen</summary>{d?.players?.find((player:any)=>player.id===x.id)?.headlines.map((n:any)=><p key={n.url}><a href={n.url} target="_blank" rel="noreferrer">{n.title}</a> · {n.source}</p>)}</details>}
                     {x.news.length ? (
                       <details className="ai-evidence">
                         <summary>{x.news.length} reporting sources</summary>
@@ -137,8 +115,8 @@ export function WaiverBrief({
             <p>Qwen did not identify a supported addition in this run.</p>
           )}
           <small>
-            Roster snapshot: {new Date(d.snapshotAt).toLocaleString()} · Qwen:{" "}
-            {new Date(d.qwen.generatedAt).toLocaleString()}
+            Roster snapshot: {new Date(state.snapshotAt).toLocaleString()} · Qwen:{" "}
+            {new Date((d?.qwen||state?.previousQwen).generatedAt).toLocaleString()}
           </small>
         </>
       ) : (

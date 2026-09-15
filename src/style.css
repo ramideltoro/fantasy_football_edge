@@ -853,3 +853,4 @@ p { line-height: 1.65; }
 .decision-flow span { font-size: 12px; color: #aebace; }
 @media(max-width:1000px) { .decision-visuals, .ai-card-grid { grid-template-columns: 1fr; } }
 @media(max-width:600px) { .ai-brief, .ai-pick, .ai-chart { padding: 17px; } .ai-heading { align-items: flex-start; flex-direction: column; } }
+.gain-link{padding:0;text-align:left;color:inherit;background:transparent;border:1px solid var(--line,#493820);border-radius:16px;cursor:pointer}.gain-link:hover{border-color:#fbbf24}.gain-link .metric{height:100%;border:0}.ai-pick table td{vertical-align:top}.ai-pick small{display:block;margin-top:6px;color:#a8a29e}.ai-heading button{display:flex;align-items:center;gap:8px}

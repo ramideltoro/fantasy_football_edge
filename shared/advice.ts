@@ -63,7 +63,7 @@ export function advice(
     .reduce((n, p) => n + (p.projected ?? 0), 0);
   return {
     method:
-      "Maximize active projected points across eligible unlocked slots. Qwen is used when available, otherwise labeled Yahoo fallback.",
+      "Maximize active projected points across eligible unlocked slots. Verified statistical projections are used when available, otherwise Yahoo points.",
     stale,
     complete,
     delta:

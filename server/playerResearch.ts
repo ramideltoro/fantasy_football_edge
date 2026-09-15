@@ -194,14 +194,10 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 7,
+    version: 8,
     scoring: scoring(s),
     newsSources: newsResearch.sources,
-    waiverCandidates: recommendations
-      .filter((p) => !p.slot && /^(FA|W)/.test(p.available))
-      .filter((p, i) => i < 12 || p.headlines.length > 0)
-      .slice(0, 20)
-      .map((p) => p.id),
+    waiverCandidates: ['QB','K','DEF','RB','WR','TE'].flatMap(position => recommendations.filter(p => p.position === position && !p.slot && /^(FA|W)/.test(p.available)).slice(0,2).map(p=>p.id)),
     teamFacts: teamBriefFacts(s, lineup),
     snapshotAt: s.capturedAt,
     generatedAt: new Date().toISOString(),

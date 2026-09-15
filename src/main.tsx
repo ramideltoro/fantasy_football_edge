@@ -1,3 +1,4 @@
+import {AnalysisRefresh} from "./AnalysisRefresh";
 import { ProjectionValue, ProjectionDetails } from "./ProjectionValue";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -319,7 +320,7 @@ function App() {
         )}
         {s && (
           <div className="notice">
-            Yahoo roster data; player projections use Qwen when ready, otherwise labeled Yahoo fallback:{" "}
+            Yahoo roster data; Qwen recommendation scores and Yahoo projected points are shown separately:{" "}
             <strong>{new Date(s.capturedAt).toLocaleString()}</strong>.{" "}
             {importState?.worker?.state.status === "cooldown"
               ? "Fresh import blocked by Yahoo until " +
@@ -404,7 +405,7 @@ function App() {
                     value={fmt(sum("actual"))}
                     note="Imported starter totals"
                   />
-                  <Metric
+                  <button className="gain-link" onClick={()=>setTab("Recommendations")} aria-label="View potential lineup gain and required changes"><Metric
                     label="Potential lineup gain"
                     value={
                       a.delta == null ? "—" : `+${fmt(Math.max(0, a.delta))}`
@@ -415,7 +416,7 @@ function App() {
                         : "Missing eligible projections"
                     }
                   />
-                  <Metric
+                  </button><Metric
                     label="Roster watch"
                     value={String(a.alerts.length)}
                     note="Injury statuses and bye weeks"
@@ -675,6 +676,7 @@ function App() {
                 </div>
               </>
             )}
+            {(tab === "Recommendations" || tab === "Waiver list") && <AnalysisRefresh owner={d.owner} snapshotAt={s.capturedAt}/>}
             {tab === "Waiver list" && (
               <WaiverList pool={pool} onPlayer={setSelected} />
             )}
@@ -687,7 +689,7 @@ function App() {
                       <div>
                         <b>{name(change.playerId)}</b>
                         <p>
-                          Replaces {name(change.currentPlayerId)} in this slot
+                          Move from {players.find((p:PlayerData)=>p.id===change.playerId)?.slot} to {change.slot}; replaces {name(change.currentPlayerId)} ({fmt(players.find((p:PlayerData)=>p.id===change.currentPlayerId)?.projected)} points) with {fmt(players.find((p:PlayerData)=>p.id===change.playerId)?.projected)} points.
                         </p>
                       </div>
                     </div>
@@ -729,8 +731,7 @@ function App() {
                         ))}
                       </div>
                       <p className="muted">
-                        Projected improvement: {fmt(a.delta)} points. These are
-                        provider projections, not independent predictions.
+                        Projected improvement: {fmt(a.delta)} points. This is the combined gain from all listed moves, not a guarantee. Apply the complete set in Yahoo before kickoff; slot reassignments can depend on each other.
                       </p>
                     </>
                   )}
