@@ -84,3 +84,12 @@ test("coverage counts and absent news cannot masquerade as evidence of player qu
     true,
   );
 });
+test("waiver availability cannot be presented as game availability", () => {
+  assert.equal(
+    usefulAssessment(
+      "His availability of W (Sep 16) suggests he will be available for the game, but his backup role remains a limitation.",
+      { position: "RB", headlines: [] },
+    ),
+    false,
+  );
+});

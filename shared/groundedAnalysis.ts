@@ -205,6 +205,9 @@ export function usefulAssessment(text: any, p: any) {
   return (
     typeof text === "string" &&
     text.length >= 80 &&
+    !/availability.{0,100}(available for|play in|for the game)|no coverage in fantasy football rankings/i.test(
+      text,
+    ) &&
     !/only .{0,40}(news|report)|most available news|rankings in fantasy football sources|news.{0,50}(suggests|strong option)/i.test(
       text,
     ) &&
