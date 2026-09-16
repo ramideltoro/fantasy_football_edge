@@ -1,3 +1,4 @@
+import { claimNews, saveNews, newsSummary } from "./newsService.ts";
 import { applyProjections } from "../shared/applyProjections.ts";
 import { advice } from "../shared/advice.ts";
 import { teamBriefFacts } from "../shared/teamBrief.ts";
@@ -25,9 +26,29 @@ export async function installIntelligence(
   news: () => any[],
 ) {
   await initProjections(db);
-  await db.query("CREATE TABLE IF NOT EXISTS qwen_history(id bigserial PRIMARY KEY,snapshot_id bigint NOT NULL,data jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now()); CREATE TABLE IF NOT EXISTS ai_progress(id bigserial PRIMARY KEY,created_at timestamptz NOT NULL DEFAULT now(),stage text NOT NULL,job text);");
-  app.post('/api/ai/progress', async(q,r)=>{if(!authorized(q)) return r.sendStatus(401); const stage=String(q.body.stage||'').slice(0,180); await db.query('INSERT INTO ai_progress(stage,job) VALUES($1,$2)',[stage,String(q.body.job||'').slice(0,30)]); await db.query('DELETE FROM ai_progress WHERE id < (SELECT COALESCE(max(id),0)-2000 FROM ai_progress)'); r.json({ok:true});});
-  app.get('/api/ai/progress',async(q,r)=>{if(!(await isOwner(q))) return r.sendStatus(403);r.json({logs:(await db.query('SELECT * FROM ai_progress ORDER BY id DESC LIMIT 30')).rows});});
+  await db.query(
+    "CREATE TABLE IF NOT EXISTS qwen_history(id bigserial PRIMARY KEY,snapshot_id bigint NOT NULL,data jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now()); CREATE TABLE IF NOT EXISTS ai_progress(id bigserial PRIMARY KEY,created_at timestamptz NOT NULL DEFAULT now(),stage text NOT NULL,job text);",
+  );
+  app.post("/api/ai/progress", async (q, r) => {
+    if (!authorized(q)) return r.sendStatus(401);
+    const stage = String(q.body.stage || "").slice(0, 180);
+    await db.query("INSERT INTO ai_progress(stage,job) VALUES($1,$2)", [
+      stage,
+      String(q.body.job || "").slice(0, 30),
+    ]);
+    await db.query(
+      "DELETE FROM ai_progress WHERE id < (SELECT COALESCE(max(id),0)-2000 FROM ai_progress)",
+    );
+    r.json({ ok: true });
+  });
+  app.get("/api/ai/progress", async (q, r) => {
+    if (!(await isOwner(q))) return r.sendStatus(403);
+    r.json({
+      logs: (
+        await db.query("SELECT * FROM ai_progress ORDER BY id DESC LIMIT 30")
+      ).rows,
+    });
+  });
   await db.query(
     `CREATE TABLE IF NOT EXISTS research_cache(url text primary key,updated_at timestamptz not null,data jsonb not null);CREATE TABLE IF NOT EXISTS intelligence(snapshot_id bigint primary key references snapshots(id),status text not null default 'queued',created_at timestamptz,claimed_at timestamptz,data jsonb,error text);`,
   );
@@ -37,7 +58,9 @@ export async function installIntelligence(
   await db.query(
     "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<8",
   );
-  await db.query("ALTER TABLE intelligence ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0");
+  await db.query(
+    "ALTER TABLE intelligence ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0",
+  );
   async function enqueue() {
     await db.query(
       "INSERT INTO intelligence(snapshot_id) SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1 ON CONFLICT DO NOTHING",
@@ -77,6 +100,8 @@ export async function installIntelligence(
   setTimeout(() => void tick(), 1000).unref();
   app.get("/api/ai/work", async (q, r) => {
     if (!authorized(q)) return r.sendStatus(401);
+    const newsJob = await claimNews(db);
+    if (newsJob) return r.json({ job: newsJob });
     const row = (
       await db.query(
         "UPDATE intelligence SET status='analyzing',claimed_at=now(),attempts=attempts+1 WHERE snapshot_id=(SELECT snapshot_id FROM intelligence WHERE status='ready' OR (status='failed' AND attempts<3 AND claimed_at<now()-interval '10 minutes') OR (status='analyzing' AND attempts<3 AND claimed_at<now()-interval '10 minutes') ORDER BY snapshot_id DESC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING snapshot_id,data",
@@ -84,11 +109,24 @@ export async function installIntelligence(
     ).rows[0];
     if (!row) return r.json({ job: null });
     const d = row.data;
+    const market = (
+      await db.query(
+        "SELECT data->'market' AS market FROM news_state WHERE id=1",
+      )
+    ).rows[0]?.market;
+    const newsEvidence = (
+      await db.query(
+        "SELECT player_id,assessment FROM player_events WHERE assessment IS NOT NULL AND data->>'supersededAt' IS NULL AND published_at>now()-interval '7 days' ORDER BY published_at DESC",
+      )
+    ).rows;
     const forecasts = await projectionMap(db, d.season, d.week);
     for (const p of d.players) {
       const f = forecasts.get(p.id);
       p.projection = f?.points ?? p.providerProjection;
-      p.method = f?.points != null ? f.method : 'Yahoo fallback — insufficient verified statistical evidence';
+      p.method =
+        f?.points != null
+          ? f.method
+          : "Yahoo fallback — insufficient verified statistical evidence";
     }
     const players = d.players.filter((p: any) => d.shortlist.includes(p.id));
     r.json({
@@ -105,9 +143,18 @@ export async function installIntelligence(
               name: p.name,
               position: p.position,
               facts: evidenceFor(p),
+              events: newsEvidence
+                .filter((e) => e.player_id === p.id)
+                .slice(0, 1)
+                .map((e) => ({
+                  action: e.assessment.action,
+                  quote: e.assessment.quote,
+                  uncertainty: e.assessment.uncertainty,
+                })),
               news: p.headlines,
             })),
           teamFacts: d.teamFacts,
+          market: market?.games || [],
           week: d.week,
           season: d.season,
           method: d.method,
@@ -117,11 +164,27 @@ export async function installIntelligence(
             name: p.name,
             slot: p.slot,
             locked: p.locked,
+            events: newsEvidence
+              .filter((e) => e.player_id === p.id)
+              .slice(0, 1)
+              .map((e) => ({
+                action: e.assessment.action,
+                quote: e.assessment.quote,
+                uncertainty: e.assessment.uncertainty,
+              })),
             facts: evidenceFor(p),
           })),
         }),
       },
     });
+  });
+  app.post("/api/ai/news-result", async (q, r) => {
+    if (!authorized(q)) return r.sendStatus(401);
+    try {
+      r.status((await saveNews(db, q.body)) ? 200 : 409).json({ ok: true });
+    } catch {
+      r.status(400).json({ error: "Unsupported news evidence" });
+    }
   });
   app.post("/api/ai/projection-result", async (q, r) => {
     if (!authorized(q)) return r.sendStatus(401);
@@ -179,7 +242,16 @@ export async function installIntelligence(
         .status(400)
         .json({ error: "Invalid or unsupported Qwen evidence" });
     }
-    await db.query('INSERT INTO qwen_history(snapshot_id,data) VALUES($1,$2)',[String(q.body.id),{...grounded,model:'qwen2.5:3b',generatedAt:new Date().toISOString(),season:row.data.season,week:row.data.week}]);
+    await db.query("INSERT INTO qwen_history(snapshot_id,data) VALUES($1,$2)", [
+      String(q.body.id),
+      {
+        ...grounded,
+        model: "qwen2.5:3b",
+        generatedAt: new Date().toISOString(),
+        season: row.data.season,
+        week: row.data.week,
+      },
+    ]);
     await db.query(
       "UPDATE intelligence SET status='complete',error=null,data=jsonb_set(data,'{qwen}',$2) WHERE snapshot_id=$1",
       [
@@ -209,7 +281,14 @@ export async function installIntelligence(
       )
     ).rows[0];
     if (!latest) return r.json({ status: "waiting", data: null });
-    const previous = (await db.query("SELECT data FROM qwen_history ORDER BY id DESC LIMIT 1")).rows[0]?.data || (await db.query("SELECT data->'qwen' AS data FROM intelligence WHERE data->'qwen' IS NOT NULL ORDER BY snapshot_id DESC LIMIT 1")).rows[0]?.data;
+    const previous =
+      (await db.query("SELECT data FROM qwen_history ORDER BY id DESC LIMIT 1"))
+        .rows[0]?.data ||
+      (
+        await db.query(
+          "SELECT data->'qwen' AS data FROM intelligence WHERE data->'qwen' IS NOT NULL ORDER BY snapshot_id DESC LIMIT 1",
+        )
+      ).rows[0]?.data;
     const current = (
       await db.query(
         "SELECT status,created_at,data,error FROM intelligence WHERE snapshot_id=$1",
@@ -308,7 +387,11 @@ export async function installIntelligence(
     r.json({
       ...current,
       previousQwen: previous || null,
-      qwenUpdated: current?.status === "complete" && Date.now()-Date.parse(current?.data?.qwen?.generatedAt||0)<14400000,
+      news: await newsSummary(db),
+      qwenUpdated:
+        current?.status === "complete" &&
+        Date.now() - Date.parse(current?.data?.qwen?.generatedAt || 0) <
+          14400000,
       status: current?.status || "queued",
       snapshotAt: latest.captured_at,
       accuracy: {

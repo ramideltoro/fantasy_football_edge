@@ -1,3 +1,4 @@
+import { newsRequest, validateNewsResult } from "../shared/newsEvidence";
 import { analysisRequest, analysisResult } from "../shared/qwenRequest";
 import fs from "node:fs";
 import os from "node:os";
@@ -61,7 +62,9 @@ async function main() {
           ];
         }),
     );
-    const request = analysisRequest(JSON.parse(job.prompt));
+    const input = JSON.parse(job.prompt);
+    const request =
+      job.kind === "news" ? newsRequest(input) : analysisRequest(input);
     const body = {
       model: "qwen2.5:3b",
       stream: false,
@@ -77,7 +80,12 @@ async function main() {
       options: { temperature: 0.1, num_predict: 2400, num_ctx: 8192 },
     };
     await progress(
-      "Qwen generating roster and six-position waiver analysis; waiting for inference",
+      job.kind === "news"
+        ? "Qwen evaluating cited events for " +
+            input.players.map((p: any) => p.name).join(", ") +
+            "; batch #" +
+            job.id
+        : "Qwen generating roster and six-position waiver analysis; waiting for inference",
     );
     const raw = await new Promise<string>((resolve, reject) => {
       const child = spawn(
@@ -135,15 +143,18 @@ async function main() {
     );
     if (completion.done_reason === "length")
       throw Error("Qwen output token limit reached");
-    const result = analysisResult(
-      JSON.parse(completion.message.content),
-      request.context,
-    );
+    const parsed = JSON.parse(completion.message.content);
+    const result =
+      job.kind === "news"
+        ? (validateNewsResult(parsed, input), parsed)
+        : analysisResult(parsed, request.context);
     const saved = await fetch(
       config.endpoint +
-        (job.kind === "projection"
-          ? "/api/ai/projection-result"
-          : "/api/ai/result"),
+        (job.kind === "news"
+          ? "/api/ai/news-result"
+          : job.kind === "projection"
+            ? "/api/ai/projection-result"
+            : "/api/ai/result"),
       {
         method: "POST",
         headers,
@@ -188,12 +199,16 @@ async function main() {
       { mode: 0o600 },
     );
     if (job)
-      await fetch(config.endpoint + "/api/ai/result", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ id: job.id, error: true }),
-        signal: AbortSignal.timeout(15000),
-      }).catch(() => {});
+      await fetch(
+        config.endpoint +
+          (job.kind === "news" ? "/api/ai/news-result" : "/api/ai/result"),
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ id: job.id, error: true }),
+          signal: AbortSignal.timeout(15000),
+        },
+      ).catch(() => {});
   } finally {
     clearInterval(pulse);
     fs.rmSync(lock, { force: true });

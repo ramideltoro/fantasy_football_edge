@@ -1,4 +1,10 @@
-import {AnalysisRefresh} from "./AnalysisRefresh";
+import {
+  NewsHub,
+  NewsOperations,
+  DecisionOverview,
+  PlayerNews,
+} from "./NewsHub";
+import { AnalysisRefresh } from "./AnalysisRefresh";
 import { ProjectionValue, ProjectionDetails } from "./ProjectionValue";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -41,18 +47,24 @@ import type { PlayerData } from "../shared/model";
 import { Scenario } from "./Scenario";
 import "./style.css";
 const fmt = (n: number | null | undefined) => (n == null ? "—" : n.toFixed(1));
-const tabs = [
-  "Overview",
-  "My roster",
-  "Player lab",
-  "Waiver list",
-  "Recommendations",
-  "League",
-  "News & trends",
-  "Import health",
-  "Yahoo refresh",
-  "AI insights",
-];
+const groups: Record<string, string[]> = {
+  Overview: ["Overview"],
+  "My Team": ["My roster", "Recommendations", "AI insights"],
+  Waivers: ["Waiver list"],
+  Research: ["News & trends", "Player lab"],
+  League: ["League"],
+  Operations: ["Yahoo refresh", "Import health"],
+};
+const labels: Record<string, string> = {
+  "My roster": "Roster",
+  Recommendations: "Lineup & decisions",
+  "AI insights": "Team analysis",
+  "Waiver list": "Waivers",
+  "News & trends": "News intelligence",
+  "Player lab": "Player research",
+  "Yahoo refresh": "Worker activity",
+  "Import health": "Import health",
+};
 function App() {
   const refreshing = useRef(false);
   const [importState, setImportState] = useState<any>(null);
@@ -102,6 +114,8 @@ function App() {
   useEffect(() => {
     if (!selected) return;
     const prior = document.activeElement as HTMLElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const drawer = document.querySelector<HTMLElement>(".drawer");
     drawer?.querySelector<HTMLButtonElement>("button")?.focus();
     const handler = (e: KeyboardEvent) => {
@@ -109,8 +123,12 @@ function App() {
       if (e.key === "Tab" && drawer) {
         const elements = Array.from(
           drawer.querySelectorAll<HTMLElement>(
-            'button,a,input,select,[tabindex="0"]',
+            'button,a,input,select,summary,[tabindex="0"]',
           ),
+        ).filter(
+          (el) =>
+            el.getClientRects().length > 0 &&
+            !(el as HTMLButtonElement).disabled,
         );
         if (e.shiftKey && document.activeElement === elements[0]) {
           e.preventDefault();
@@ -124,6 +142,7 @@ function App() {
     document.addEventListener("keydown", handler);
     return () => {
       document.removeEventListener("keydown", handler);
+      document.body.style.overflow = overflow;
       prior?.focus();
     };
   }, [selected?.id]);
@@ -135,7 +154,14 @@ function App() {
       if (!r.ok) throw Error();
       const body = await r.json();
       setD(body);
-      setSelected(current => current ? [...(body.snapshot?.players || []),...(body.snapshot?.available || [])].find(p=>p.id===current.id) || current : null);
+      setSelected((current) =>
+        current
+          ? [
+              ...(body.snapshot?.players || []),
+              ...(body.snapshot?.available || []),
+            ].find((p) => p.id === current.id) || current
+          : null,
+      );
       if (body.owner) {
         const request = await fetch("/api/import/request");
         if (request.ok) {
@@ -213,31 +239,26 @@ function App() {
         </a>
         <div className="nav-label">YOUR COMMAND CENTER</div>
         <nav>
-          {tabs.map((t, i) => (
+          {Object.entries(groups).map(([group, items], i) => (
             <button
-              className={tab === t ? "active" : ""}
-              onClick={() => setTab(t)}
-              key={t}
+              key={group}
+              className={
+                (items.includes(tab) ? "active " : "") +
+                (group === "Operations" ? "operations-nav" : "")
+              }
+              onClick={() => setTab(items[0])}
             >
               {
                 [
                   <Activity />,
                   <Users />,
+                  <Zap />,
                   <ChartNoAxesCombined />,
-                  <Users />,
-
-                  <Zap />,
                   <Shield />,
-                  <ArrowUpRight />,
                   <RefreshCw />,
-                  <RefreshCw />,
-                  <Zap />,
                 ][i]
               }
-              {t}
-              {t === "Recommendations" && changes.length > 0 && (
-                <em>{changes.length}</em>
-              )}
+              {group}
             </button>
           ))}
         </nav>
@@ -254,7 +275,11 @@ function App() {
         <header>
           <div>
             <span className="eyebrow">THE WEEKLY ADVANTAGE</span>
-            <h1>{tab}</h1>
+            <h1>
+              {Object.entries(groups).find(([, items]) =>
+                items.includes(tab),
+              )?.[0] || tab}
+            </h1>
           </div>
           <div className="header-right">
             {d?.owner ? (
@@ -289,48 +314,31 @@ function App() {
             </button>
           </div>
         </header>
-        {d?.owner && (
-          <div className="notice">
-            <button
-              disabled={requesting}
-              onClick={async () => {
-                setRequesting(true);
-                try {
-                  const r = await fetch("/api/import/request", {
-                    method: "POST",
-                  });
-                  if (!r.ok) throw Error();
-                  const body = await r.json();
-                  setRequestMessage(body.message);
-                } catch {
-                  setRequestMessage(
-                    "Unable to queue refresh. Please try again.",
-                  );
-                } finally {
-                  setRequesting(false);
-                }
-              }}
-            >
-              {requesting ? "Queuing…" : "Refresh from Yahoo"}
-            </button>{" "}
-            <span role="status">
-              {requestMessage || "Ask your Mac worker to import fresh data."}
-            </span>
-          </div>
-        )}
         {s && (
-          <div className="notice">
-            Yahoo roster data; Qwen recommendation scores and Yahoo projected points are shown separately:{" "}
-            <strong>{new Date(s.capturedAt).toLocaleString()}</strong>.{" "}
-            {importState?.worker?.state.status === "cooldown"
-              ? "Fresh import blocked by Yahoo until " +
-                new Date(importState.worker.state.retryAt).toLocaleString() +
-                ". Previous data remains displayed."
-              : importState?.request && !importState.request.fulfilled_at
-                ? "Refresh pending or running. These views update together only after every required page finishes."
-                : ""}
-          </div>
+          <AnalysisRefresh
+            owner={d.owner}
+            snapshotAt={s.capturedAt}
+            onOperations={() => setTab("Yahoo refresh")}
+          />
         )}
+        <div className="section-tabs">
+          {Object.values(groups)
+            .find((items) => items.includes(tab))
+            ?.filter(
+              () =>
+                Object.values(groups).find((items) => items.includes(tab))!
+                  .length > 1,
+            )
+            .map((t) => (
+              <button
+                key={t}
+                aria-pressed={tab === t}
+                onClick={() => setTab(t)}
+              >
+                {labels[t] || t}
+              </button>
+            ))}
+        </div>
         {error && <div className="notice">{error}</div>}
         {!d && !error ? (
           <div className="loading">Loading your edge…</div>
@@ -370,53 +378,37 @@ function App() {
             )}
             {tab === "Overview" && (
               <>
-                <section className="hero">
-                  <div>
-                    <span className="eyebrow">WEEK {s.week} · GAME PLAN</span>
-                    <h2>
-                      Know your roster.
-                      <br />
-                      <span>Find your edge.</span>
-                    </h2>
-                    <p>
-                      {changes.length
-                        ? `${changes.length} lineup assignments to review based on the latest imported projections.`
-                        : "Your lineup, player trends and next decisions — in one place."}
-                    </p>
-                    <button
-                      className="primary"
-                      onClick={() => setTab("Recommendations")}
-                    >
-                      Review your game plan <ArrowUpRight size={17} />
-                    </button>
-                  </div>
-                  <div className="hero-score">
-                    <span>STARTING LINEUP PROJECTION</span>
-                    <strong>{fmt(sum("projected"))}</strong>
-                    <small>Yahoo imported points · not a win guarantee</small>
-                    <svg viewBox="0 0 300 60">
-                      <path d="M0 55 L35 43 L65 49 L100 22 L130 32 L160 18 L190 25 L230 5 L270 12 L300 1" />
-                    </svg>
-                  </div>
-                </section>
+                <DecisionOverview
+                  dashboard={d}
+                  onPlayer={(id) =>
+                    setSelected(pool.find((p) => p.id === id) || null)
+                  }
+                  onLineup={() => setTab("Recommendations")}
+                />
                 <div className="metrics">
                   <Metric
                     label="Points so far"
                     value={fmt(sum("actual"))}
                     note="Imported starter totals"
                   />
-                  <button className="gain-link" onClick={()=>setTab("Recommendations")} aria-label="View potential lineup gain and required changes"><Metric
-                    label="Potential lineup gain"
-                    value={
-                      a.delta == null ? "—" : `+${fmt(Math.max(0, a.delta))}`
-                    }
-                    note={
-                      a.complete
-                        ? "Eligible, unlocked positions"
-                        : "Missing eligible projections"
-                    }
-                  />
-                  </button><Metric
+                  <button
+                    className="gain-link"
+                    onClick={() => setTab("Recommendations")}
+                    aria-label="View potential lineup gain and required changes"
+                  >
+                    <Metric
+                      label="Potential lineup gain"
+                      value={
+                        a.delta == null ? "—" : `+${fmt(Math.max(0, a.delta))}`
+                      }
+                      note={
+                        a.complete
+                          ? "Eligible, unlocked positions"
+                          : "Missing eligible projections"
+                      }
+                    />
+                  </button>
+                  <Metric
                     label="Roster watch"
                     value={String(a.alerts.length)}
                     note="Injury statuses and bye weeks"
@@ -446,11 +438,13 @@ function App() {
                         <Tooltip />
                         <Legend />
                         <Bar
+                          isAnimationActive={false}
                           dataKey="Projected"
                           fill="#f5ad32"
                           radius={[4, 4, 0, 0]}
                         />
                         <Bar
+                          isAnimationActive={false}
                           dataKey="Actual"
                           fill="#6d7488"
                           radius={[4, 4, 0, 0]}
@@ -555,7 +549,9 @@ function App() {
                             <p>
                               {p.position} · {p.team}
                             </p>
-                            <strong><ProjectionValue player={p}/></strong>
+                            <strong>
+                              <ProjectionValue player={p} />
+                            </strong>
                             <p>projected · {fmt(p.actual)} actual</p>
                             <button
                               onClick={() =>
@@ -635,7 +631,9 @@ function App() {
                               </small>
                             </td>
                             <td>{p.slot || "Pool"}</td>
-                            <td className="amber"><ProjectionValue player={p}/></td>
+                            <td className="amber">
+                              <ProjectionValue player={p} />
+                            </td>
                             <td>{fmt(p.actual)}</td>
                             <td>
                               {p.rosterPct == null ? "—" : p.rosterPct + "%"}
@@ -676,7 +674,7 @@ function App() {
                 </div>
               </>
             )}
-            {(tab === "Recommendations" || tab === "Waiver list") && <AnalysisRefresh owner={d.owner} snapshotAt={s.capturedAt}/>}
+
             {tab === "Waiver list" && (
               <WaiverList pool={pool} onPlayer={setSelected} />
             )}
@@ -689,7 +687,27 @@ function App() {
                       <div>
                         <b>{name(change.playerId)}</b>
                         <p>
-                          Move from {players.find((p:PlayerData)=>p.id===change.playerId)?.slot} to {change.slot}; replaces {name(change.currentPlayerId)} ({fmt(players.find((p:PlayerData)=>p.id===change.currentPlayerId)?.projected)} points) with {fmt(players.find((p:PlayerData)=>p.id===change.playerId)?.projected)} points.
+                          Move from{" "}
+                          {
+                            players.find(
+                              (p: PlayerData) => p.id === change.playerId,
+                            )?.slot
+                          }{" "}
+                          to {change.slot}; replaces{" "}
+                          {name(change.currentPlayerId)} (
+                          {fmt(
+                            players.find(
+                              (p: PlayerData) =>
+                                p.id === change.currentPlayerId,
+                            )?.projected,
+                          )}{" "}
+                          points) with{" "}
+                          {fmt(
+                            players.find(
+                              (p: PlayerData) => p.id === change.playerId,
+                            )?.projected,
+                          )}{" "}
+                          points.
                         </p>
                       </div>
                     </div>
@@ -731,7 +749,10 @@ function App() {
                         ))}
                       </div>
                       <p className="muted">
-                        Projected improvement: {fmt(a.delta)} points. This is the combined gain from all listed moves, not a guarantee. Apply the complete set in Yahoo before kickoff; slot reassignments can depend on each other.
+                        Projected improvement: {fmt(a.delta)} points. This is
+                        the combined gain from all listed moves, not a
+                        guarantee. Apply the complete set in Yahoo before
+                        kickoff; slot reassignments can depend on each other.
                       </p>
                     </>
                   )}
@@ -829,8 +850,16 @@ function App() {
                           <YAxis type="category" dataKey="name" />
                           <Tooltip />
                           <Legend />
-                          <Bar dataKey="Original" fill="#60697f" />
-                          <Bar dataKey="Live" fill="#f5ad32" />
+                          <Bar
+                            isAnimationActive={false}
+                            dataKey="Original"
+                            fill="#60697f"
+                          />
+                          <Bar
+                            isAnimationActive={false}
+                            dataKey="Live"
+                            fill="#f5ad32"
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </>
@@ -903,76 +932,11 @@ function App() {
                 </>
               ))}
             {tab === "News & trends" && (
-              <>
-                <Panel
-                  title="Around the league"
-                  subtitle="Linked headlines from ESPN and Yahoo Sports. Publication dates come from each feed."
-                >
-                  <div className="news">
-                    {d.news.length ? (
-                      d.news.map((n: any) => (
-                        <a
-                          key={n.url}
-                          href={n.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <span className="eyebrow">{n.source}</span>
-                          <h3>{n.title}</h3>
-                          <small>
-                            {n.publishedAt
-                              ? new Date(n.publishedAt).toLocaleString()
-                              : "Date unavailable"}
-                          </small>
-                          <ArrowUpRight size={18} />
-                        </a>
-                      ))
-                    ) : (
-                      <p className="empty">
-                        News feeds are currently unavailable.
-                      </p>
-                    )}
-                  </div>
-                </Panel>
-                <Panel
-                  title="Players in the headlines"
-                  subtitle="Article counts across the linked source feeds; attention is not a performance forecast."
-                >
-                  {pool
-                    .map((p) => ({
-                      player: p,
-                      articles: d.news.filter((n: any) =>
-                        n.title.toLowerCase().includes(p.name.toLowerCase()),
-                      ),
-                    }))
-                    .filter((x) => x.articles.length)
-                    .sort((a, b) => b.articles.length - a.articles.length)
-                    .slice(0, 12)
-                    .map((x) => (
-                      <div className="watch" key={x.player.id}>
-                        <button onClick={() => setSelected(x.player)}>
-                          <b>{x.player.name}</b>
-                        </button>
-                        <span>
-                          {x.articles.length} headlines ·{" "}
-                          {[
-                            ...new Set(x.articles.map((n: any) => n.source)),
-                          ].join(", ")}
-                        </span>
-                      </div>
-                    ))}
-                </Panel>
-                <Panel
-                  title="Trend evidence"
-                  subtitle="Historical changes become available after repeated imports."
-                >
-                  <p>
-                    Open any player in the roster to see projection and
-                    roster-percentage movement. One snapshot is a baseline, not
-                    a trend.
-                  </p>
-                </Panel>
-              </>
+              <NewsHub
+                onPlayer={(id) =>
+                  setSelected(pool.find((p) => p.id === id) || null)
+                }
+              />
             )}
             {tab === "Player lab" && (
               <Panel
@@ -1070,7 +1034,12 @@ function App() {
               </Panel>
             )}
             {tab === "AI insights" && <AIInsights owner={d.owner} />}
-            {tab === "Yahoo refresh" && <ImportOperations owner={d.owner} />}
+            {tab === "Yahoo refresh" && (
+              <>
+                <NewsOperations owner={d.owner} />
+                <ImportOperations owner={d.owner} />
+              </>
+            )}
             {tab === "Import health" && (
               <>
                 <div className="metrics">
@@ -1214,7 +1183,11 @@ function App() {
                 }
               />
             </div>
-            <ProjectionDetails player={selected}/>
+            <ProjectionDetails player={selected} />
+            <PlayerNews
+              player={selected}
+              history={playerHistory.filter((h: any) => h.week === s.week)}
+            />
             <h3>Historical Yahoo projection movement · week {s.week}</h3>
             {series(selected).length > 1 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -1224,11 +1197,13 @@ function App() {
                   <YAxis />
                   <Tooltip />
                   <Line
+                    isAnimationActive={false}
                     dataKey="projected"
                     stroke="#f5ad32"
                     connectNulls={false}
                   />
                   <Line
+                    isAnimationActive={false}
                     dataKey="actual"
                     stroke="#65c5ac"
                     connectNulls={false}
@@ -1251,12 +1226,14 @@ function App() {
                   <YAxis domain={[0, 100]} unit="%" />
                   <Tooltip />
                   <Line
+                    isAnimationActive={false}
                     dataKey="rosterPct"
                     name="Rostered %"
                     stroke="#f5ad32"
                     connectNulls={false}
                   />
                   <Line
+                    isAnimationActive={false}
                     dataKey="startPct"
                     name="Started %"
                     stroke="#65c5ac"

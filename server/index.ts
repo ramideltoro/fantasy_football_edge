@@ -1,5 +1,6 @@
-import {projectionMap} from "./projections.ts";
-import {applyProjections} from "../shared/applyProjections.ts";
+import { installNews } from "./newsService.ts";
+import { projectionMap } from "./projections.ts";
+import { applyProjections } from "../shared/applyProjections.ts";
 import { installIntelligence } from "./intelligence.ts";
 import { unpackSnapshot } from "../shared/importPackage.ts";
 import { completeYahooSnapshot } from "../shared/importCompleteness.ts";
@@ -366,10 +367,13 @@ app.get("/api/dashboard", async (q, r) => {
       history: [],
       advice: null,
       events: [],
-      news: newsCache,
+      news: newsService.articles(),
     });
   const raw = row.data as SnapshotData;
-  const s = applyProjections(raw,await projectionMap(db,raw.season,raw.week));
+  const s = applyProjections(
+    raw,
+    await projectionMap(db, raw.season, raw.week),
+  );
   const historicalRows = (
     await db.query(
       "SELECT data FROM snapshots WHERE data->>'season'=$1 AND data->'team'->>'id'=$2 AND data->'league'->>'id'=$3 ORDER BY captured_at DESC LIMIT 1000",
@@ -405,8 +409,8 @@ app.get("/api/dashboard", async (q, r) => {
           )
         ).rows
       : [],
-    news: newsCache,
-    sources: sourceHealth,
+    news: newsService.articles(),
+    sources: newsService.health(),
   });
 });
 app.get("/api/players/:id/history", async (q, r) => {
@@ -441,73 +445,11 @@ app.get("/api/players/:id/history", async (q, r) => {
       })),
   );
 });
-let newsCache: {
-  source: string;
-  title: string;
-  url: string;
-  publishedAt: string;
-}[] = [];
-const sourceHealth: Record<
-  string,
-  { updatedAt: string; status: string; articles: number }
-> = {};
-async function news() {
-  const parser = new XMLParser();
-  const feeds = [
-    ["ESPN", "https://www.espn.com/espn/rss/nfl/news"],
-    ["Yahoo Sports", "https://sports.yahoo.com/nfl/rss.xml"],
-  ];
-  const articles = [];
-  for (const [source, url] of feeds) {
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
-      if (!r.ok) throw Error("Feed unavailable");
-      const items = parser.parse(await r.text()).rss?.channel?.item;
-      const feedItems = (
-        Array.isArray(items) ? items : items ? [items] : []
-      ).slice(0, 20);
-      if (!feedItems.length) throw Error("Empty feed");
-      for (const item of feedItems) {
-        if (
-          typeof item.title !== "string" ||
-          typeof item.link !== "string" ||
-          !item.link.startsWith("https://")
-        )
-          continue;
-        articles.push({
-          source,
-          title: item.title.replace(/<[^>]*>/g, "").slice(0, 220),
-          url: item.link,
-          publishedAt: item.pubDate || "",
-        });
-      }
-      sourceHealth[source] = {
-        updatedAt: new Date().toISOString(),
-        status: "ok",
-        articles: feedItems.length,
-      };
-    } catch {
-      articles.push(...newsCache.filter((n) => n.source === source));
-      sourceHealth[source] = {
-        updatedAt: sourceHealth[source]?.updatedAt || "",
-        status: "failed",
-        articles: newsCache.filter((n) => n.source === source).length,
-      };
-    }
-  }
-  newsCache = articles
-    .filter(
-      (x, i, a) =>
-        a.findIndex((y) => y.url === x.url || y.title === x.title) === i,
-    )
-    .sort(
-      (a, b) =>
-        (Date.parse(b.publishedAt) || 0) - (Date.parse(a.publishedAt) || 0),
-    )
-    .slice(0, 40);
-}
-void news();
-setInterval(() => void news(), 3600000).unref();
+const newsService = await installNews(
+  app,
+  db,
+  async (q) => (await session(q))?.email === owner,
+);
 setInterval(
   () => void db.query("DELETE FROM sessions WHERE expires_at<now()"),
   3600000,
@@ -517,7 +459,7 @@ await installIntelligence(
   db,
   tokenOK,
   async (q) => (await session(q))?.email === owner,
-  () => newsCache,
+  () => newsService.articles(),
 );
 app.use(express.static("dist", { maxAge: "1h" }));
 app.get("/{*path}", (_q, r) => r.sendFile("index.html", { root: "dist" }));
