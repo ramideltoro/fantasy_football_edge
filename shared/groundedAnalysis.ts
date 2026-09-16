@@ -205,6 +205,16 @@ export function usefulAssessment(text: any, p: any) {
   return (
     typeof text === "string" &&
     text.length >= 80 &&
+    !/only .{0,40}(news|report)|most available news|rankings in fantasy football sources|news.{0,50}(suggests|strong option)/i.test(
+      text,
+    ) &&
+    !(
+      !p.headlines?.length &&
+      /\b(news|reporting|reports|sources)\b/i.test(text) &&
+      !/news (does not|doesn.t|cannot|can.t)|no (supporting|current|available|verified) (news|reporting)/i.test(
+        text,
+      )
+    ) &&
     /\b(because|however|but|risk|upside|uncertain|limitation|consider)\b/i.test(
       text,
     ) &&
