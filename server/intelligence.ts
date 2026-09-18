@@ -204,8 +204,16 @@ export async function installIntelligence(
       return r
         .status((await saveProjection(db, q.body)) ? 200 : 409)
         .json({ ok: true });
-    } catch {
-      return r.status(400).json({ error: "Invalid projection result" });
+    } catch (error) {
+      return r
+        .status(400)
+        .json({
+          error: "Invalid projection result",
+          detail:
+            error instanceof Error
+              ? error.message.slice(0, 700)
+              : "Invalid forecast",
+        });
     }
   });
   app.get("/api/projections", async (_q, r) => {

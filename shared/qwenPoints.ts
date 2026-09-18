@@ -191,7 +191,7 @@ export function validateQwenPoints(raw: any, input: any) {
       locked: "game already started; no new pre-game forecast",
       insufficient: "insufficient evidence",
     };
-    const evidence = x.evidence
+    const evidence = [...new Set(x.evidence)]
       .filter((k) => k !== "news" || p.news?.length)
       .filter((k) => k !== "market" || p.market?.length);
     return {

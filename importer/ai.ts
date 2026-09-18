@@ -101,84 +101,104 @@ async function main() {
               .join(", ")
           : "Qwen generating roster and six-position waiver analysis; waiting for inference",
     );
-    const raw = await new Promise<string>((resolve, reject) => {
-      const child = spawn(
-        "/usr/bin/ssh",
-        [
-          "-i",
-          path.join(home, "qwen-ssh-key"),
-          "-o",
-          "IdentitiesOnly=yes",
-          "-o",
-          "StrictHostKeyChecking=yes",
-          "-o",
-          "ConnectTimeout=20",
-          "-o",
-          "ProxyCommand=/opt/homebrew/bin/cloudflared access ssh --hostname %h",
-          "infra-deploy@localserver.ramideltoro.com",
-          'curl --max-time 220 -fsS http://127.0.0.1:11434/api/chat -H "Content-Type: application/json" --data-binary @-',
-        ],
-        {
-          env: {
-            ...process.env,
-            TUNNEL_SERVICE_TOKEN_ID: env.LOCAL_SERVER_INFRA_ACCESS_CLIENT_ID,
-            TUNNEL_SERVICE_TOKEN_SECRET:
-              env.LOCAL_SERVER_INFRA_ACCESS_CLIENT_SECRET,
+    const infer = () =>
+      new Promise<string>((resolve, reject) => {
+        const child = spawn(
+          "/usr/bin/ssh",
+          [
+            "-i",
+            path.join(home, "qwen-ssh-key"),
+            "-o",
+            "IdentitiesOnly=yes",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ConnectTimeout=20",
+            "-o",
+            "ProxyCommand=/opt/homebrew/bin/cloudflared access ssh --hostname %h",
+            "infra-deploy@localserver.ramideltoro.com",
+            'curl --max-time 220 -fsS http://127.0.0.1:11434/api/chat -H "Content-Type: application/json" --data-binary @-',
+          ],
+          {
+            env: {
+              ...process.env,
+              TUNNEL_SERVICE_TOKEN_ID: env.LOCAL_SERVER_INFRA_ACCESS_CLIENT_ID,
+              TUNNEL_SERVICE_TOKEN_SECRET:
+                env.LOCAL_SERVER_INFRA_ACCESS_CLIENT_SECRET,
+            },
+            stdio: ["pipe", "pipe", "pipe"],
           },
-          stdio: ["pipe", "pipe", "pipe"],
+        );
+        let output = "";
+        const timer = setTimeout(() => {
+          child.kill();
+          reject(Error("Qwen timeout"));
+        }, 240000);
+        child.stdout.on("data", (x) => {
+          output += x;
+          if (output.length > 2000000) {
+            child.kill();
+            reject(Error("Qwen response too large"));
+          }
+        });
+        child.stderr.resume();
+        child.on("error", reject);
+        child.on("close", (code) => {
+          clearTimeout(timer);
+          code === 0 ? resolve(output) : reject(Error("Qwen unavailable"));
+        });
+        child.stdin.end(JSON.stringify(body));
+      });
+    for (let repair = 0; repair < 2; repair++) {
+      const raw = await infer();
+      await progress("Validating Qwen JSON and uploading recommendations");
+      const completion = JSON.parse(raw);
+      fs.writeFileSync(
+        path.join(home, "ai-last-response.json"),
+        JSON.stringify({ id: job.id, completion }),
+        { mode: 0o600 },
+      );
+      if (completion.done_reason === "length")
+        throw Error("Qwen output token limit reached");
+      const parsed = JSON.parse(completion.message.content);
+      const result =
+        job.kind === "news"
+          ? (validateNewsResult(parsed, input), parsed)
+          : job.kind === "projection"
+            ? parsed
+            : analysisResult(parsed, request.context);
+      const saved = await fetch(
+        config.endpoint +
+          (job.kind === "news"
+            ? "/api/ai/news-result"
+            : job.kind === "projection"
+              ? "/api/ai/projection-result"
+              : "/api/ai/result"),
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ id: job.id, result }),
+          signal: AbortSignal.timeout(15000),
         },
       );
-      let output = "";
-      const timer = setTimeout(() => {
-        child.kill();
-        reject(Error("Qwen timeout"));
-      }, 240000);
-      child.stdout.on("data", (x) => {
-        output += x;
-        if (output.length > 2000000) {
-          child.kill();
-          reject(Error("Qwen response too large"));
-        }
-      });
-      child.stderr.resume();
-      child.on("error", reject);
-      child.on("close", (code) => {
-        clearTimeout(timer);
-        code === 0 ? resolve(output) : reject(Error("Qwen unavailable"));
-      });
-      child.stdin.end(JSON.stringify(body));
-    });
-    await progress("Validating Qwen JSON and uploading recommendations");
-    const completion = JSON.parse(raw);
-    fs.writeFileSync(
-      path.join(home, "ai-last-response.json"),
-      JSON.stringify({ id: job.id, completion }),
-      { mode: 0o600 },
-    );
-    if (completion.done_reason === "length")
-      throw Error("Qwen output token limit reached");
-    const parsed = JSON.parse(completion.message.content);
-    const result =
-      job.kind === "news"
-        ? (validateNewsResult(parsed, input), parsed)
-        : job.kind === "projection"
-          ? parsed
-          : analysisResult(parsed, request.context);
-    const saved = await fetch(
-      config.endpoint +
-        (job.kind === "news"
-          ? "/api/ai/news-result"
-          : job.kind === "projection"
-            ? "/api/ai/projection-result"
-            : "/api/ai/result"),
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ id: job.id, result }),
-        signal: AbortSignal.timeout(15000),
-      },
-    );
-    if (!saved.ok) throw Error("Result rejected");
+      if (saved.ok) break;
+      if (job.kind !== "projection" || saved.status !== 400 || repair === 1)
+        throw Error("Result rejected");
+      const rejection = await saved.json().catch(() => ({}));
+      await progress(
+        "Qwen correcting an invalid forecast; no rejected numbers are published",
+      );
+      body.messages.push(
+        { role: "assistant", content: completion.message.content },
+        {
+          role: "user",
+          content:
+            "Correct the complete JSON response using the original evidence. The validator rejected it: " +
+            String(rejection.detail || "Invalid forecast").slice(0, 700) +
+            ". Start probability must never exceed play probability. Percentages must be whole numbers 0 to 100. Return all original player keys, with no new facts.",
+        },
+      );
+    }
     await progress("Analysis saved successfully");
     fs.writeFileSync(
       path.join(home, "ai-status.json"),
