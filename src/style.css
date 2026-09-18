@@ -2908,3 +2908,226 @@ main > header {
     font-size: 28px;
   }
 }
+
+/* VegasInsider market desk */
+.sportsbook-feed {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  margin: 0 0 18px;
+  border: 1px solid #ae772a;
+  border-left: 4px solid #ffba38;
+  border-radius: 12px;
+  background: linear-gradient(110deg, #322009, #15110a 70%);
+  color: #ffc453;
+}
+.sportsbook-feed > div:first-of-type {
+  flex: 1;
+}
+.sportsbook-feed strong {
+  display: block;
+  font-size: 16px;
+}
+.sportsbook-feed span,
+.sportsbook-feed small {
+  display: block;
+  color: #d3bd94;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.sportsbook-feed-time {
+  text-align: right;
+}
+.sportsbook-feed-time b {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.sportsbook-number {
+  display: block;
+  text-align: left;
+  color: #ffc453;
+  padding: 8px;
+  border: 1px solid #8e6426;
+  border-radius: 9px;
+  background: #3a270e;
+  transition:
+    background 0.18s,
+    transform 0.18s;
+}
+.sportsbook-number:hover {
+  background: #513717;
+  transform: translateY(-2px);
+}
+.sportsbook-number strong {
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+.sportsbook-number small {
+  color: #e5c897;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.sportsbook-dialog {
+  max-width: 940px;
+}
+.sportsbook-total {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px;
+  background: linear-gradient(115deg, #362309, #1b170e);
+  border: 1px solid #9d6c25;
+  border-radius: 12px;
+  color: #ffbf49;
+}
+.sportsbook-total > div {
+  flex: 1;
+}
+.sportsbook-total strong {
+  display: block;
+  font-family: Anton, sans-serif;
+  font-size: 38px;
+  font-weight: 400;
+}
+.sportsbook-total strong small {
+  font:
+    12px Inter,
+    sans-serif;
+  display: inline;
+}
+.sportsbook-total > span {
+  font-size: 12px;
+  line-height: 1.8;
+}
+.sportsbook-warning {
+  border-left: 3px solid #ffbf49;
+  padding: 10px 14px;
+  background: #332413;
+}
+.sportsbook-details p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.sportsbook-details summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: 12px 0;
+}
+.sportsbook-details caption {
+  text-align: left;
+  padding: 10px 0;
+  color: #d7c198;
+  font-weight: 600;
+}
+.sportsbook-details th,
+.sportsbook-details td {
+  font-size: 12px;
+  padding: 10px 12px;
+  vertical-align: top;
+}
+.sportsbook-details td small {
+  display: block;
+  color: #bca985;
+  font-size: 10px;
+  margin-top: 3px;
+}
+.sportsbook-details .quote-excluded {
+  color: #baa98d;
+}
+.sportsbook-details .odds-raw {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.sportsbook-method,
+.sportsbook-receipts {
+  border-top: 1px solid #514024;
+  margin-top: 12px;
+}
+.sportsbook-sources {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 18px 0 10px;
+}
+.sportsbook-sources a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #ffc453;
+}
+.dossier-projections {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.dossier-projections > div {
+  min-width: 0;
+}
+.dossier-projections > div > small {
+  font-size: 9px;
+}
+.roster-table table {
+  min-width: 1160px;
+}
+@media (max-width: 700px) {
+  .sportsbook-feed {
+    align-items: flex-start;
+    padding: 14px;
+    flex-wrap: wrap;
+  }
+  .sportsbook-feed-time {
+    text-align: left;
+    padding-left: 36px;
+    flex-basis: 100%;
+  }
+  .sportsbook-feed span {
+    line-height: 1.5;
+  }
+  .sportsbook-total {
+    padding: 12px;
+  }
+  .sportsbook-details th,
+  .sportsbook-details td {
+    padding: 9px;
+  }
+  .roster-table table {
+    min-width: 0;
+  }
+  .sportsbook-number {
+    width: 100%;
+  }
+  .dossier-projections strong {
+    font-size: 26px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sportsbook-number {
+    transition: none;
+  }
+}
+.sportsbook-details table {
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+}
+.sportsbook-details .table-wrap {
+  max-width: 100%;
+}
+.sportsbook-dialog {
+  font-weight: 400;
+  white-space: normal;
+}
+.dossier > details > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+@media (max-width: 700px) {
+  .sportsbook-details table {
+    min-width: 490px;
+  }
+}
+.sportsbook-details th {
+  background: #2b2418;
+  color: #d7c29e;
+}

@@ -1,3 +1,5 @@
+import { installSportsbook } from "./sportsbookService.ts";
+import { sportsbookProjection } from "../shared/sportsbook.ts";
 import { publicJsonCache } from "./publicCache.ts";
 import { installNews } from "./newsService.ts";
 import { projectionMap } from "./projections.ts";
@@ -393,6 +395,7 @@ app.get("/api/dashboard", async (q, r) => {
       [raw.season, raw.week],
     )
   ).rows[0]?.data;
+  const odds = await sportsbookService.state();
   const depth = await depthCharts().catch(() => null);
   const teamAliases: Record<string, string> = {
     JAC: "JAX",
@@ -400,6 +403,7 @@ app.get("/api/dashboard", async (q, r) => {
     LA: "LAR",
   };
   for (const p of [...s.players, ...s.available]) {
+    p.sportsbook = sportsbookProjection(p, raw, odds);
     const research = intelligence?.players?.find(
       (r: any) => r.id === p.id && r.team === p.team,
     );
@@ -516,6 +520,11 @@ app.get("/api/players/:id/history", async (q, r) => {
       })),
   );
 });
+const sportsbookService = await installSportsbook(
+  app,
+  db,
+  async (q) => tokenOK(q) || (await session(q))?.email === owner,
+);
 const newsService = await installNews(
   app,
   db,

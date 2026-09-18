@@ -1,3 +1,4 @@
+import type { SportsbookProjection } from "./sportsbook.ts";
 import { z } from "zod";
 export const Player = z.object({
   id: z.string(),
@@ -14,6 +15,7 @@ export const Player = z.object({
   profile: z.any().optional(),
   nflRole: z.any().optional(),
   research: z.any().optional(),
+  sportsbook: z.custom<SportsbookProjection>().optional(),
   startPct: z.number().nullable(),
   rosterPct: z.number().nullable(),
   status: z.string(),

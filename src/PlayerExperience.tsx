@@ -1,3 +1,9 @@
+import {
+  SportsbookButton,
+  SportsbookDetails,
+  SportsbookFeed,
+  SportsbookNumber,
+} from "./Sportsbook";
 import React, {
   createContext,
   useContext,
@@ -250,6 +256,7 @@ export function PlayerTable({
           <small>PLAYERS</small>
         </span>
       </div>
+      <SportsbookFeed />
       <div className="roster-controls">
         <div className="filter-pills" aria-label="Position filter">
           {["ALL", "QB", "RB", "WR", "TE", "K", "DEF"].map((pos) => (
@@ -299,6 +306,9 @@ export function PlayerTable({
               <th>Slot</th>
               <th>Yahoo projected</th>
               <th>Qwen projected</th>
+              <th>
+                Bookies projected<small>Partial points · tap for math</small>
+              </th>
               <th>Rostered</th>
               <th title="Actual NFL starts divided by games played this season">
                 Started<small>This NFL season</small>
@@ -382,6 +392,12 @@ export function PlayerTable({
                     )}
                   </button>
                 </td>
+                <td
+                  className="point-cell sportsbook-cell"
+                  data-label="Bookies projected"
+                >
+                  <SportsbookButton player={p} />
+                </td>
                 <td data-label="Rostered">{pct(p.rosterPct)}</td>
                 <td data-label="Started this NFL season">
                   <Started player={p} />
@@ -411,9 +427,10 @@ export function PlayerTable({
         </div>
       )}
       <p className="table-note">
-        Yahoo and Qwen are separate point forecasts. Tap a player for receipts.
-        NFL start probabilities are Qwen estimates from sourced evidence;
-        “Started” is a historical record.
+        Yahoo and Qwen are separate full forecasts. Bookies shows a partial
+        subtotal from available props. Tap the number for the math. NFL start
+        probabilities are Qwen estimates from sourced evidence; “Started” is a
+        historical record.
       </p>
     </section>
   );
@@ -562,7 +579,15 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
           <strong>{points(currentQwen(p)?.points)}</strong>
           <span>{q?.stale ? "Refresh pending" : "fantasy points"}</span>
         </div>
+        <div>
+          <small>BOOKIES PROJECTED</small>
+          <SportsbookNumber projection={p.sportsbook} />
+        </div>
       </div>
+      <details className="dossier-section">
+        <summary>Sportsbook receipts · see calculation</summary>
+        <SportsbookDetails projection={p.sportsbook} />
+      </details>
       <dl className="detail-grid">
         <div>
           <dt>Fantasy position</dt>
