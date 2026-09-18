@@ -22,6 +22,9 @@ async function main() {
   const config = JSON.parse(
     fs.readFileSync(path.join(home, "config.json"), "utf8"),
   );
+  const ollamaPort = Number(config.ollamaPort ?? 11434);
+  if (!Number.isInteger(ollamaPort) || ollamaPort < 1 || ollamaPort > 65535)
+    throw Error("Invalid local inference port");
   const headers = {
     Authorization: "Bearer " + config.token,
     "Content-Type": "application/json",
@@ -117,7 +120,7 @@ async function main() {
             "-o",
             "ProxyCommand=/opt/homebrew/bin/cloudflared access ssh --hostname %h",
             "infra-deploy@localserver.ramideltoro.com",
-            'curl --max-time 220 -fsS http://127.0.0.1:11434/api/chat -H "Content-Type: application/json" --data-binary @-',
+            `curl --max-time 220 -fsS http://127.0.0.1:${ollamaPort}/api/chat -H "Content-Type: application/json" --data-binary @-`,
           ],
           {
             env: {

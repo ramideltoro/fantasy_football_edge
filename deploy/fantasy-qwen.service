@@ -1,0 +1,27 @@
+[Unit]
+Description=Fantasy Football Edge private Qwen inference
+After=network.target
+
+[Service]
+Type=simple
+User=ollama
+Group=ollama
+ExecStart=/usr/local/bin/ollama serve
+Environment=OLLAMA_HOST=127.0.0.1:11435
+Environment=OLLAMA_MODELS=/usr/share/ollama/.ollama/models
+Environment=OLLAMA_CONTEXT_LENGTH=8192
+Environment=OLLAMA_NUM_PARALLEL=1
+Environment=OLLAMA_MAX_LOADED_MODELS=1
+Environment=OLLAMA_MAX_QUEUE=16
+Restart=on-failure
+RestartSec=5
+Nice=5
+MemoryMax=8G
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/usr/share/ollama/.ollama/models
+
+[Install]
+WantedBy=multi-user.target
