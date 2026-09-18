@@ -32,7 +32,13 @@ export function QwenValue({
       >
         <strong>{value}</strong>
         <small>
-          {q ? "Why this number?" : p.locked ? "Game locked" : "Recalculating"}
+          {q
+            ? value === "—"
+              ? "See coverage"
+              : "Why this number?"
+            : p.locked
+              ? "Game locked"
+              : "Recalculating"}
         </small>
       </button>
       {open && (
@@ -177,7 +183,7 @@ export function QwenDetails({
               starting role does not guarantee a full workload.
             </p>
           )}
-          {c && (
+          {c && q.points != null && (
             <>
               <h4>Your league’s scoring, step by step</h4>
               <p>

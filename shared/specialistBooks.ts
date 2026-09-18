@@ -14,6 +14,12 @@ export function specialistBooks(
     (base.reason && !base.reason.includes("does not publish the scoring props"))
   )
     return base;
+  if (p.position === "K" && research.nflRole !== "Starter")
+    return {
+      ...base,
+      reason:
+        "The game lines price the team's primary kicker. This player's starting role is not confirmed, and the source has no individual kicking props to support an estimate.",
+    };
   const games = base.games.filter((g) => g.kind === "sportsbook");
   const books = [...new Set(games.map((g) => g.book))];
   const history = context.teamHistory.filter(

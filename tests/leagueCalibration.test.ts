@@ -194,6 +194,7 @@ const base: any = {
 test("K and DEF book projections use every comparable line and explicitly identify the hybrid model", () => {
   const b = calibratedBaseline("K", [kicker], [peer], rules)!;
   const research = {
+    nflRole: "Starter",
     specialist: {
       baseline: b,
       teamHistory: [kicker],
@@ -204,6 +205,24 @@ test("K and DEF book projections use every comparable line and explicitly identi
   assert.ok(r.points! > 0 && r.points! < 15);
   assert.equal(r.model!.perBook.length, 3);
   assert.equal(r.partial, false);
+  assert.equal(
+    specialistBooks(
+      { position: "K" },
+      { ...research, nflRole: "Unknown" },
+      rules,
+      base,
+    ).points,
+    null,
+  );
+  assert.equal(
+    specialistBooks(
+      { position: "K" },
+      { ...research, nflRole: "Backup" },
+      rules,
+      base,
+    ).points,
+    null,
+  );
   assert.equal(
     r.points,
     Math.round(((20 * b.points) / b.expected.teamPoints) * 100) / 100,
@@ -236,6 +255,43 @@ test("K and DEF book projections use every comparable line and explicitly identi
       games: base.games.slice(0, 4),
     }).points,
     null,
+  );
+});
+test("unconfirmed QB/K roles cannot inherit a starter's projection or availability probability", () => {
+  const p = {
+    id: "unknown",
+    position: "K",
+    nflRole: "Unknown",
+    baseline: calibratedBaseline("K", [], [peer], rules),
+  };
+  const input = { week: 2, players: [p], scoring: rules };
+  assert.deepEqual(forecastOptions(p, 2), [null]);
+  const result = validateQwenPoints(
+    {
+      unknown: {
+        points: null,
+        playProbability: null,
+        startProbability: null,
+        factors: ["insufficient"],
+      },
+    },
+    input,
+  )[0];
+  assert.match(result.reason, /No confirmed NFL/);
+  assert.throws(
+    () =>
+      validateQwenPoints(
+        {
+          unknown: {
+            points: 9,
+            playProbability: 90,
+            startProbability: 10,
+            factors: ["baseline"],
+          },
+        },
+        input,
+      ),
+    /outside/,
   );
 });
 import { displayTeamName, leagueOverview } from "../shared/analytics.ts";

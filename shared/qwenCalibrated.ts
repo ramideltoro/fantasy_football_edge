@@ -4,11 +4,15 @@ const locked = (p: any) =>
   !!p.locked || !!(p.kickoffAt && Date.parse(p.kickoffAt) <= Date.now());
 const unavailable = (p: any, w: number) =>
   p.bye === w || ["O", "IR", "PUP", "SUSP"].includes(p.injury);
+const roleMissing = (p: any) =>
+  ["QB", "K"].includes(p.position) &&
+  !["Starter", "Backup"].includes(p.nflRole);
 const adjustments = [-0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15];
 const round = (n: number) => Math.round(n * 100) / 100;
 export function forecastOptions(p: any, week: number): Array<number | null> {
   if (locked(p) || (!p.baseline && !unavailable(p, week))) return [null];
   if (unavailable(p, week)) return [0];
+  if (roleMissing(p)) return [null];
   return [
     ...new Set(
       adjustments.map((a) =>
@@ -32,7 +36,7 @@ export function projectionRequest(input: any) {
   const definitions = Object.fromEntries(
     input.players.map((p: any) => {
       const zero = unavailable(p, input.week),
-        inactive = locked(p),
+        inactive = locked(p) || (!zero && roleMissing(p)),
         options = forecastOptions(p, input.week);
       const play =
         inactive || p.position === "DEF"
@@ -195,13 +199,17 @@ export function validateQwenPoints(raw: any, input: any) {
       low: null,
       high: null,
       reason:
-        b && x.points != null
-          ? `League-scored baseline ${round(b.points).toFixed(2)} points; Qwen selected ${x.points.toFixed(2)} (${delta! >= 0 ? "+" : ""}${delta!.toFixed(2)}). Factors: ${used.map((k) => factorText[k]).join("; ")}.`
-          : `Qwen factors: ${used.map((k) => factorText[k]).join("; ")}.`,
+        !unavailable(p, input.week) && roleMissing(p)
+          ? "No confirmed NFL depth-chart role is available for this player. A positional starter baseline is not a usable forecast until that role is verified."
+          : b && x.points != null
+            ? `League-scored baseline ${round(b.points).toFixed(2)} points; Qwen selected ${x.points.toFixed(2)} (${delta! >= 0 ? "+" : ""}${delta!.toFixed(2)}). Factors: ${used.map((k) => factorText[k]).join("; ")}.`
+            : `Qwen factors: ${used.map((k) => factorText[k]).join("; ")}.`,
       startReason:
-        p.position === "DEF"
-          ? "An NFL team defense has no individual start probability."
-          : `Qwen estimates ${x.startProbability ?? "unknown"}% to start and ${x.playProbability ?? "unknown"}% to play. ESPN lists ${p.nflRole || "an unconfirmed role"}; Yahoo status is ${p.injury || "no injury flag"}. These are subjective whole-number estimates based on supplied role, availability and reporting, not observed NFL start percentages.`,
+        !unavailable(p, input.week) && roleMissing(p)
+          ? "The NFL depth-chart role is unconfirmed. Qwen is not publishing a starting probability without that role evidence."
+          : p.position === "DEF"
+            ? "An NFL team defense has no individual start probability."
+            : `Qwen estimates ${x.startProbability ?? "unknown"}% to start and ${x.playProbability ?? "unknown"}% to play. ESPN lists ${p.nflRole || "an unconfirmed role"}; Yahoo status is ${p.injury || "no injury flag"}. These are subjective whole-number estimates based on supplied role, availability and reporting, not observed NFL start percentages.`,
       calculation: b
         ? {
             ...b,

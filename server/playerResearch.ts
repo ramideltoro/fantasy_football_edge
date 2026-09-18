@@ -176,7 +176,8 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
       priors[p.position] || [],
       rules,
     );
-    if (baseline && p.position === "QB" && rank > 1) {
+    if (["QB", "K"].includes(p.position) && !rank) baseline = null;
+    if (baseline && ["QB", "K"].includes(p.position) && rank > 1) {
       baseline = {
         ...baseline,
         points: baseline.points * 0.1,
@@ -186,7 +187,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
           points: c.points * 0.1,
         })),
         limitation:
-          "Backup QB: baseline workload is reduced to 10% of the statistical estimate until starter evidence changes.",
+          "Backup QB/K: baseline workload is reduced to 10% of the statistical estimate until starter evidence changes.",
       };
     }
     const specialist = ["K", "DEF"].includes(p.position)
@@ -323,7 +324,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 11,
+    version: 12,
     scoring: scoring(s),
     newsSources: newsResearch.sources,
     waiverCandidates: ["QB", "K", "DEF", "RB", "WR", "TE"].flatMap((position) =>

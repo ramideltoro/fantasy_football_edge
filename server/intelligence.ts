@@ -57,7 +57,7 @@ export async function installIntelligence(
     "UPDATE intelligence SET status='queued' WHERE status='building'",
   );
   await db.query(
-    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<11",
+    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<12",
   );
   await db.query(
     "ALTER TABLE intelligence ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0",
