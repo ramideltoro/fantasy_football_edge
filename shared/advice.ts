@@ -1,4 +1,5 @@
 import type { PlayerData, SnapshotData } from "./model.ts";
+import { effectiveStatus } from "./availability.ts";
 const reserve = new Set(["BN", "IR", "IR+", "NA"]);
 export function fits(p: PlayerData, slot: string) {
   return slot === "W/R/T"
@@ -16,6 +17,7 @@ export function advice(
     ...s,
     players: s.players.map((p) => ({
       ...p,
+      status: effectiveStatus(p),
       locked:
         p.locked ||
         (p.kickoffAt !== null && Date.parse(p.kickoffAt) <= Date.now()),

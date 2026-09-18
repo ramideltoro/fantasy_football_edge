@@ -5,6 +5,12 @@ An amber fantasy-football command center with a provider-independent snapshot AP
 Production: https://fantasy.ramideltoro.com  
 Documentation: https://github.com/ramideltoro/fantasy_football_edge_wiki
 
+## Game-day tools
+
+Overview surfaces the next useful actions. My Team contains source/risk lineup controls, the three-week planner, kickoff watch and FLEX contingencies. Waivers contains the immediate player comparison and multi-week pickup impact. Research contains the persistent forecast report card, weekly recaps and changes since the last visit. See the [game-plan guide](https://github.com/ramideltoro/fantasy_football_edge_wiki/blob/main/Game-Plan-and-Receipts.md).
+
+The backend checks availability independently of the browser; optional browser notifications require an open page. Future-week planning uses labeled historical baselines. Qwen/combined accuracy accumulates prospectively from saved pregame forecasts.
+
 ## Develop
 
 Requires Node.js 24+, PostgreSQL 17+, and Chrome on the importing Mac.
@@ -37,6 +43,8 @@ The launch agent checks every 15 minutes. Normal imports are throttled to hourly
 - `src`: responsive React dashboard, Recharts graphs, roster and comparison views.
 - `shared/model.ts`: versioned canonical schema and Yahoo DOM adapter.
 - `shared/advice.ts`: lineup optimization with eligibility, bye, injury and kickoff locks.
+- `shared/strategy.ts`, `gamePlanAudit.ts`, `gamePlanChanges.ts`: planning, risk preferences, forecast/decision receipts and material alerts.
+- `server/gamePlanService.ts`: persistent source checks, schedule cache, pregame ledger and public game-plan API.
 - `shared/analytics.ts`: privacy-aware league summaries and prospective forecast scoring.
 - `server`: Express API, PostgreSQL persistence, Google OIDC, RSS headline ingestion.
 - `importer`: local Playwright reader and macOS launch-agent installer.

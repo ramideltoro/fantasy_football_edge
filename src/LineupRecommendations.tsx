@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 import { Lock } from "lucide-react";
 import type { SnapshotData } from "../shared/model";
 import {
-  lineupAdvice,
   projectionModes,
   type ProjectionMode,
 } from "../shared/lineupProjections";
+import { strategyLineup, type RiskMode } from "../shared/strategy";
+import { effectiveStatus } from "../shared/availability";
 import { PlayerLink } from "./PlayerExperience";
 import { SortableTable } from "./SortableTable";
 const fmt = (n: number | null | undefined) => (n == null ? "—" : n.toFixed(2));
@@ -16,7 +17,11 @@ export function LineupRecommendations({
   snapshot: SnapshotData;
 }) {
   const [mode, setMode] = useState<ProjectionMode>("yahoo");
-  const a = useMemo(() => lineupAdvice(snapshot, mode), [snapshot, mode]);
+  const [risk, setRisk] = useState<RiskMode>("balanced");
+  const a = useMemo(
+    () => strategyLineup(snapshot, mode, risk),
+    [snapshot, mode, risk],
+  );
   const players = new Map(snapshot.players.map((p) => [p.id, p]));
   const unlocked = snapshot.players.filter(
     (p) => !p.locked && (!p.kickoffAt || Date.parse(p.kickoffAt) > Date.now()),
@@ -24,7 +29,7 @@ export function LineupRecommendations({
   const eligible = unlocked.filter(
     (p) =>
       !["IR", "IR+", "NA"].includes(p.slot) &&
-      !["O", "IR", "PUP", "SUSP"].includes(p.status) &&
+      !["O", "IR", "PUP", "SUSP"].includes(effectiveStatus(p)) &&
       p.bye !== snapshot.week,
   );
   const missing = eligible.filter((p) => a.projections[p.id].points === null);
@@ -56,6 +61,51 @@ export function LineupRecommendations({
             {value.label}
           </button>
         ))}
+      </div>
+      <div className="risk-controls">
+        <span className="eyebrow">HOW DO YOU WANT TO PLAY IT?</span>
+        <div
+          className="filter-pills"
+          role="group"
+          aria-label="Lineup risk preference"
+        >
+          {(
+            [
+              ["balanced", "Most projected points"],
+              ["protect", "Protect the lead"],
+              ["chase", "Swing for the fences"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              aria-pressed={a.risk === key}
+              disabled={mode === "bookies" && key !== "balanced"}
+              onClick={() => setRisk(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p>
+          {a.risk === "balanced"
+            ? "Start with the highest total from your selected projection source."
+            : a.risk === "protect"
+              ? "Favor the lower end of each player’s historical scoring range. A steadier lineup can mean fewer expected points."
+              : "Favor the upper end of each player’s historical scoring range. More upside can mean a rougher floor."}
+        </p>
+        {mode === "bookies" ? (
+          <small>
+            Risk preferences need full fantasy scores. Bookies mode includes
+            partial props, so it uses the selected scores directly.
+          </small>
+        ) : (
+          <small>
+            Ranges use the last 5–8 available games, scored for your league and
+            shifted around this forecast. They describe past variation, not
+            guaranteed floors, ceilings or win odds. Players without enough
+            history use their point forecast.
+          </small>
+        )}
       </div>
       <div className="lineup-mode-summary" role="status">
         <strong>{projectionModes[mode].label}</strong>
@@ -137,13 +187,20 @@ export function LineupRecommendations({
                           : projectionModes[mode].label}
                   </small>
                 )}
+                {!x.locked && mode !== "bookies" && (
+                  <small className="range-label">
+                    {a.ranges[x.playerId]?.low == null
+                      ? "Range pending · limited history"
+                      : `${fmt(a.ranges[x.playerId].low)}–${fmt(a.ranges[x.playerId].high)} middle range · ${a.ranges[x.playerId].samples} games`}
+                  </small>
+                )}
               </div>
             ))}
           </div>
           <p className="lineup-gain">
             {mode === "bookies"
               ? "Bookies score improvement"
-              : "Projected improvement"}
+              : "Expected points change"}
             :{" "}
             <strong>
               {a.delta == null
@@ -163,8 +220,9 @@ export function LineupRecommendations({
           Open the playbook · numbers behind every roster option
         </summary>
         <p>
-          Only the selected source sets the lineup. A dash means unavailable. In
-          combined mode, missing sources are omitted from the average.
+          The selected source and risk preference set the lineup. A dash means
+          unavailable. In combined mode, missing sources are omitted from the
+          average.
         </p>
         {mode === "combined" && (
           <p>
@@ -187,6 +245,7 @@ export function LineupRecommendations({
                 <th>Bookies</th>
                 {mode === "combined" && <th>Book-informed full estimate</th>}
                 <th>Selected score</th>
+                {mode !== "bookies" && <th>Historical middle range</th>}
                 <th>Availability</th>
               </tr>
             </thead>
@@ -229,12 +288,25 @@ export function LineupRecommendations({
                         <small>{v.sourceCount}/3 sources</small>
                       )}
                     </td>
+                    {mode !== "bookies" && (
+                      <td data-sort-value={a.ranges[p.id]?.low}>
+                        {a.ranges[p.id]?.low == null
+                          ? "—"
+                          : `${fmt(a.ranges[p.id].low)}–${fmt(a.ranges[p.id].high)}`}
+                        <small>
+                          {a.ranges[p.id]?.samples || 0} games
+                          {a.ranges[p.id]?.priorSeason
+                            ? " · includes prior season"
+                            : ""}
+                        </small>
+                      </td>
+                    )}
                     <td>
                       {locked
                         ? "Game locked"
                         : p.bye === snapshot.week
                           ? "Bye"
-                          : p.status || "No injury flag"}
+                          : effectiveStatus(p) || "No injury flag"}
                     </td>
                   </tr>
                 );

@@ -1,5 +1,14 @@
 import { recordSortValue } from "../shared/tableSort";
 import { LineupRecommendations } from "./LineupRecommendations";
+import {
+  ActionBrief,
+  ChangesFeed,
+  KickoffDesk,
+  ThreeWeekPlanner,
+  ProjectionReportCard,
+  WeeklyRecap,
+  useKickoffNotifications,
+} from "./GamePlan";
 import { SortableTable } from "./SortableTable";
 import {
   PlayerProvider,
@@ -60,11 +69,24 @@ import "./style.css";
 const fmt = (n: number | null | undefined) => (n == null ? "—" : n.toFixed(1));
 const groups: Record<string, string[]> = {
   Overview: ["Overview"],
-  "My Team": ["My roster", "Recommendations", "AI insights"],
-  Waivers: ["Waiver list"],
-  Research: ["News & trends"],
+  "My Team": [
+    "My roster",
+    "Recommendations",
+    "Three-week plan",
+    "Kickoff watch",
+    "AI insights",
+  ],
+  Waivers: ["Waiver list", "Pickup impact"],
+  Research: ["Report card", "Weekly recap", "What changed", "News & trends"],
   League: ["League"],
   Operations: ["Yahoo refresh", "Import health"],
+};
+const validTab = (hash: string) => {
+  let name = "";
+  try {
+    name = decodeURIComponent(hash.replace(/^#/, ""));
+  } catch {}
+  return Object.values(groups).flat().includes(name) ? name : "Overview";
 };
 const labels: Record<string, string> = {
   "My roster": "Roster",
@@ -88,7 +110,20 @@ function Dashboard({
   const [requesting, setRequesting] = useState(false);
   const [d, setD] = useState<any>(null),
     [error, setError] = useState(""),
-    [tab, setTab] = useState("Overview");
+    [tab, changeTab] = useState(() => validTab(window.location.hash));
+  const setTab = (next: string) => {
+    changeTab(next);
+    window.location.hash = encodeURIComponent(next);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+  useEffect(() => {
+    const navigate = () => changeTab(validTab(window.location.hash));
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
+  }, []);
+  const notifications = useKickoffNotifications(d?.gamePlan, () =>
+    setTab("Kickoff watch"),
+  );
   async function refresh() {
     if (refreshing.current) return;
     refreshing.current = true;
@@ -100,6 +135,7 @@ function Dashboard({
       onPlayers([
         ...(body.snapshot?.players || []),
         ...(body.snapshot?.available || []),
+        ...(body.gamePlan?.historyPlayers || []),
       ]);
       if (body.owner) {
         const request = await fetch("/api/import/request");
@@ -326,7 +362,9 @@ function Dashboard({
             )}
             {tab === "Overview" && (
               <>
+                <ActionBrief snapshot={s} plan={d.gamePlan} navigate={setTab} />
                 <HealthBoard players={players} />
+                <ChangesFeed plan={d.gamePlan} compact navigate={setTab} />
                 <section className="panel matchup-commentary">
                   <span className="eyebrow">
                     WEEK {s.week} · THE LOCKER-ROOM READ
@@ -489,8 +527,46 @@ function Dashboard({
               </>
             )}
             {tab === "Recommendations" && (
-              <Scenario players={players} pool={pool} />
+              <section className="panel gameplan-shortcuts">
+                <h3>Plan the next move.</h3>
+                <p>
+                  A stronger lineup starts before Sunday. Check your gaps, keep
+                  a backup ready and test a pickup.
+                </p>
+                <div className="panel-actions">
+                  {["Three-week plan", "Kickoff watch", "Pickup impact"].map(
+                    (t) => (
+                      <button key={t} onClick={() => setTab(t)}>
+                        {t} <ChevronRight size={15} />
+                      </button>
+                    ),
+                  )}
+                </div>
+              </section>
             )}
+            {tab === "Pickup impact" && (
+              <Scenario snapshot={s} plan={d.gamePlan} />
+            )}
+            {tab === "Three-week plan" && (
+              <ThreeWeekPlanner
+                snapshot={s}
+                plan={d.gamePlan}
+                navigate={setTab}
+              />
+            )}
+            {tab === "Kickoff watch" && (
+              <KickoffDesk
+                snapshot={s}
+                plan={d.gamePlan}
+                notifications={notifications}
+                navigate={setTab}
+              />
+            )}
+            {tab === "Report card" && (
+              <ProjectionReportCard plan={d.gamePlan} />
+            )}
+            {tab === "Weekly recap" && <WeeklyRecap plan={d.gamePlan} />}
+            {tab === "What changed" && <ChangesFeed plan={d.gamePlan} />}
             {tab === "League" && (
               <>
                 <Panel

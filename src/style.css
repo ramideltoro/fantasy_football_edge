@@ -3391,3 +3391,564 @@ th[aria-sort="descending"] .sort-indicator {
     visibility: hidden;
   }
 }
+/* Game-day desk: one visual language across decisions, planning and receipts. */
+.gameplan-brief {
+  margin: 20px 0 28px;
+}
+.gameplan-brief h2 {
+  margin: 6px 0;
+  font-size: clamp(26px, 3vw, 38px);
+  letter-spacing: -1.3px;
+}
+.action-card-grid,
+.planner-week-grid,
+.report-source-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.action-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 24px;
+  border: 1px solid #795525;
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at top right, #bb721627, transparent 75%), #17151c;
+  transition:
+    transform 0.2s,
+    border-color 0.2s;
+}
+.action-card:hover {
+  transform: translateY(-3px);
+  border-color: #ffbf53;
+}
+.action-card.urgent {
+  border-color: #d47b47;
+}
+.action-number {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: #ffc368;
+  font-weight: 800;
+}
+.action-card h3 {
+  font-size: 23px;
+  line-height: 1.18;
+  letter-spacing: -0.6px;
+  margin: 20px 0 10px;
+}
+.action-card p {
+  color: #c0bac4;
+  font-size: 14px;
+  line-height: 1.65;
+  flex: 1;
+  margin: 0 0 16px;
+}
+.action-card button,
+.panel-actions button,
+.gameplan-brief .section-heading button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  border: 1px solid #795525;
+  background: #ffb73d12;
+  color: #ffcd7e;
+  text-align: left;
+}
+.action-card button {
+  padding-left: 0;
+  border: 0;
+  background: transparent;
+}
+.section-heading {
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.section-heading > div {
+  min-width: 0;
+}
+.gameplan-stack {
+  display: grid;
+  gap: 22px;
+}
+.gameplan-stack .panel {
+  margin-bottom: 0;
+}
+.gameplan-stack h2,
+.three-week-planner h2,
+.report-card h2,
+.weekly-recap h2,
+.scenario-panel h2 {
+  letter-spacing: -0.7px;
+}
+.gameplan-stack p,
+.three-week-planner p,
+.report-card p,
+.weekly-recap p,
+.changes-feed p,
+.risk-controls p {
+  line-height: 1.65;
+}
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.count-badge {
+  display: inline-flex;
+  padding: 7px 12px;
+  border-radius: 20px;
+  background: #ffb73d15;
+  color: #ffd18b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.filter-pills button {
+  padding: 10px 14px;
+  min-height: 44px;
+  border: 1px solid #45424a;
+  border-radius: 10px;
+  color: #c7c4cd;
+  text-transform: capitalize;
+}
+.filter-pills button[aria-pressed="true"] {
+  background: #ffba48;
+  border-color: #ffba48;
+  color: #241600;
+  font-weight: 700;
+}
+.filter-pills button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.change-list article {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid #302d37;
+}
+.change-list p {
+  margin: 4px 0 7px;
+}
+.change-list small,
+.gameplan-stack small,
+.planner-week-grid small,
+.report-source-grid small,
+.weekly-recap small {
+  color: #a9a3b1;
+  line-height: 1.6;
+}
+.change-kind {
+  align-self: start;
+  color: #ffca75;
+  border: 1px solid #674d2b;
+  padding: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  border-radius: 7px;
+  text-align: center;
+}
+.change-kind.health {
+  color: #ffb4a7;
+  border-color: #783e39;
+}
+.source-health-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: #b7b1c0;
+  background: #ffffff05;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.source-health-line svg {
+  margin-top: 3px;
+}
+.kickoff-desk > .section-heading button {
+  min-height: 44px;
+  border: 1px solid #795525;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.quiet-state {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid #355849;
+  background: #42b48309;
+  border-radius: 14px;
+  padding: 22px;
+  margin: 20px 0;
+}
+.quiet-state > svg {
+  color: #70d7a6;
+}
+.quiet-state h3,
+.quiet-state p {
+  margin: 4px 0;
+}
+.kickoff-alert {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 20px;
+  margin: 20px 0;
+  padding: 24px;
+  border: 1px solid #78602d;
+  border-radius: 15px;
+  background: #fcb04408;
+}
+.kickoff-alert.urgent {
+  border-color: #9e4c3f;
+  background: #f1685809;
+}
+.kickoff-alert h3 {
+  font-size: 23px;
+  margin: 10px 0;
+}
+.kickoff-alert > small {
+  grid-column: 1/-1;
+}
+.kickoff-alert button,
+.planner-week-grid button {
+  min-height: 44px;
+  text-align: left;
+  color: #ffcf87;
+  padding: 8px 0;
+}
+.gameplan-stack details,
+.report-card details,
+.waiver-impact details {
+  border-top: 1px solid #36313d;
+  padding-top: 16px;
+  margin-top: 20px;
+}
+.gameplan-stack summary,
+.report-card summary,
+.waiver-impact summary {
+  cursor: pointer;
+  min-height: 44px;
+  font-weight: 650;
+  line-height: 1.6;
+}
+.flex-moves article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px 180px;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #332e39;
+  align-items: center;
+}
+.contingency-card {
+  padding: 20px;
+  border: 1px solid #4b3e2d;
+  border-radius: 14px;
+  margin: 14px 0;
+}
+.planner-week-grid article,
+.report-source-grid article,
+.recap-card-grid article {
+  border: 1px solid #49404b;
+  background: linear-gradient(145deg, #211d26, #15151e);
+  padding: 24px;
+  border-radius: 15px;
+  min-width: 0;
+}
+.planner-week-grid article.has-gaps {
+  border-color: #997033;
+}
+.planner-week-grid article > span,
+.report-source-grid article > span,
+.recap-card-grid article > span {
+  font-size: 11px;
+  color: #ffc46a;
+  font-weight: 750;
+  letter-spacing: 1.5px;
+}
+.planner-week-grid strong {
+  font-size: 30px;
+  letter-spacing: -0.7px;
+}
+.planner-week-grid strong small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.planner-week-grid article p {
+  font-size: 13px;
+}
+.three-week-planner .table-wrap {
+  margin: 22px 0;
+}
+.three-week-planner td small {
+  display: block;
+  font-size: 11px;
+  color: #a9a3b1;
+  margin-top: 4px;
+}
+.bye-chip {
+  display: inline-block;
+  background: #c4822025;
+  color: #ffd18a;
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+.report-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.report-controls label {
+  font-size: 13px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+}
+.report-controls input {
+  accent-color: #ffbf53;
+  width: 18px;
+  height: 18px;
+}
+.report-source-grid strong {
+  display: block;
+  font-size: 44px;
+  margin-top: 15px;
+  font-weight: 750;
+  letter-spacing: -2px;
+}
+.report-source-grid b,
+.report-source-grid small {
+  display: block;
+}
+.report-source-grid b {
+  font-size: 13px;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+.report-source-grid p {
+  margin-bottom: 0;
+}
+.report-card td small {
+  display: block;
+  color: #a9a3b1;
+}
+.recap-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0 30px;
+}
+.recap-card-grid h3 {
+  font-size: 22px;
+  margin-bottom: 12px;
+}
+.recap-card-grid strong {
+  color: #ffd08c;
+}
+.recap-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: #f5b24512;
+  border: 1px solid #7d582c;
+  border-radius: 12px;
+  padding: 20px;
+}
+.recap-banner strong {
+  font-size: 25px;
+  letter-spacing: -0.6px;
+}
+.recap-banner span {
+  color: #cbbfae;
+  font-size: 13px;
+}
+.weekly-recap select {
+  margin-left: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.decision-receipts article {
+  padding: 20px 0;
+  border-top: 1px solid #39313b;
+}
+.decision-receipts b {
+  color: #ffcf85;
+}
+.risk-controls {
+  padding: 20px;
+  border: 1px solid #51432e;
+  border-radius: 14px;
+  margin: 18px 0;
+  background: #f6b44606;
+}
+.risk-controls small {
+  color: #afa7b3;
+  line-height: 1.7;
+  display: block;
+}
+.range-label {
+  margin-top: 6px;
+  color: #c1b4a2 !important;
+}
+.impact-headline {
+  padding: 24px;
+  border: 1px solid #82602b;
+  background: #eeb2440a;
+  border-radius: 14px;
+  margin: 24px 0;
+}
+.impact-headline span {
+  font-size: 11px;
+  color: #ffce8a;
+  letter-spacing: 1.6px;
+}
+.impact-headline strong {
+  display: block;
+  font-size: clamp(25px, 3vw, 38px);
+  letter-spacing: -1px;
+  margin: 8px 0;
+}
+.impact-headline p {
+  margin: 0;
+  color: #bbb0bf;
+}
+.depth-changes {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 18px 0;
+  line-height: 1.7;
+}
+.depth-changes span {
+  color: #e8c794;
+}
+.lineup-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.lineup-comparison > div {
+  padding: 20px;
+  border: 1px solid #443b47;
+  border-radius: 12px;
+  min-width: 0;
+}
+.lineup-comparison p {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.lineup-comparison p > b {
+  width: 45px;
+  color: #b8a17d;
+  font-size: 12px;
+}
+@media (max-width: 1100px) {
+  .action-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .action-card {
+    padding: 18px;
+  }
+  .action-card h3 {
+    font-size: 20px;
+  }
+  .planner-week-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .action-card-grid,
+  .report-source-grid,
+  .recap-card-grid,
+  .lineup-comparison,
+  .kickoff-alert {
+    grid-template-columns: 1fr;
+  }
+  .action-card {
+    padding: 20px;
+  }
+  .action-card h3 {
+    margin-top: 12px;
+  }
+  .kickoff-alert {
+    padding: 18px;
+    gap: 12px;
+  }
+  .flex-moves article {
+    grid-template-columns: minmax(0, 1fr) 85px;
+  }
+  .flex-moves small {
+    grid-column: 1/-1;
+  }
+  .change-list article {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .change-kind {
+    justify-self: start;
+  }
+  .section-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .section-tabs button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .risk-controls {
+    padding: 15px;
+  }
+  .risk-controls .filter-pills button {
+    flex: 1 1 100%;
+    text-align: left;
+  }
+  .source-health-line {
+    display: block;
+  }
+  .weekly-recap .section-heading label {
+    width: 100%;
+  }
+  .report-source-grid article {
+    padding: 20px;
+  }
+  .report-source-grid strong {
+    font-size: 36px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .action-card {
+    transition: none;
+  }
+  .action-card:hover {
+    transform: none;
+  }
+}

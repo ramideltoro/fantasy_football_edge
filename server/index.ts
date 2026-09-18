@@ -1,13 +1,9 @@
+import { enrichSnapshot } from "./enrichSnapshot.ts";
+import { installGamePlan } from "./gamePlanService.ts";
 import { matchupCommentary } from "../shared/matchupCommentary.ts";
-import { specialistBooks } from "../shared/specialistBooks.ts";
-import { scoring } from "../shared/playerForecast.ts";
-import { actualPoints } from "../shared/leagueScoring.ts";
 import { installSportsbook } from "./sportsbookService.ts";
-import { sportsbookProjection } from "../shared/sportsbook.ts";
 import { publicJsonCache } from "./publicCache.ts";
 import { installNews } from "./newsService.ts";
-import { projectionMap } from "./projections.ts";
-import { applyProjections } from "../shared/applyProjections.ts";
 import { installIntelligence } from "./intelligence.ts";
 import { unpackSnapshot } from "../shared/importPackage.ts";
 import { completeYahooSnapshot } from "../shared/importCompleteness.ts";
@@ -389,61 +385,10 @@ app.get("/api/dashboard", async (q, r) => {
       news: newsService.articles(),
     });
   const raw = row.data as SnapshotData;
-  const s = applyProjections(
-    raw,
-    await projectionMap(db, raw.season, raw.week),
-  );
-  const intelligence = (
-    await db.query(
-      "SELECT data FROM intelligence WHERE data IS NOT NULL AND (data->>'season')::int=$1 AND (data->>'week')::int=$2 ORDER BY snapshot_id DESC LIMIT 1",
-      [raw.season, raw.week],
-    )
-  ).rows[0]?.data;
-  const rules = scoring(raw);
-  const odds = await sportsbookService.state();
-  const depth = await depthCharts().catch(() => null);
-  const teamAliases: Record<string, string> = {
-    JAC: "JAX",
-    WAS: "WSH",
-    LA: "LAR",
-  };
-  for (const p of [...s.players, ...s.available]) {
-    p.sportsbook = sportsbookProjection(p, raw, odds);
-    const research = intelligence?.players?.find(
-      (r: any) => r.id === p.id && r.team === p.team,
-    );
-    p.sportsbook = specialistBooks(p, research, rules, p.sportsbook!);
-    p.actual = actualPoints(p, rules).points;
-    p.profile = research?.profile || null;
-    p.research = research
-      ? {
-          history: research.history,
-          opponent: research.opponent,
-          headlines: research.headlines,
-          generatedAt: intelligence.generatedAt,
-        }
-      : null;
-    const t =
-      depth?.teams?.[teamAliases[p.team.toUpperCase()] || p.team.toUpperCase()];
-    const key = p.name
-      .toLowerCase()
-      .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
-      .replace(/[^a-z0-9]/g, "");
-    const rank = t?.ranks?.[key];
-    p.nflRole = {
-      rank: rank ?? null,
-      label:
-        p.position === "DEF"
-          ? "Team defense"
-          : rank === 1
-            ? "Starter"
-            : rank > 1
-              ? "Backup"
-              : "Unconfirmed",
-      source: t?.source,
-      asOf: t?.asOf,
-    };
-  }
+  const s = await enrichSnapshot(db, raw, await sportsbookService.state());
+  const gamePlan = await gamePlanService.get(raw);
+  for (const p of [...s.players, ...s.available])
+    p.gameDay = gamePlan?.availability?.[p.id] || null;
   const historyKey = [s.season, s.team.id, s.league.id].join(":");
   if (
     !historicalCache ||
@@ -480,6 +425,7 @@ app.get("/api/dashboard", async (q, r) => {
     history,
     league: leagueOverview(s, privateView),
     matchupCommentary: matchupCommentary(s),
+    gamePlan,
     accuracy: accuracy(historicalRows.map((x) => x.data)),
     calibrated: calibratedForecast(
       raw.players,
@@ -549,8 +495,21 @@ await installIntelligence(
   async (q) => (await session(q))?.email === owner,
   () => newsService.articles(),
 );
-app.use(express.static("dist", { maxAge: "1h" }));
-app.get("/{*path}", (_q, r) => r.sendFile("index.html", { root: "dist" }));
+const gamePlanService = await installGamePlan(app, db, async (raw) =>
+  enrichSnapshot(db, raw, await sportsbookService.state()),
+);
+app.use(
+  express.static("dist", {
+    maxAge: "1h",
+    setHeaders: (response, path) => {
+      if (path.endsWith("index.html"))
+        response.setHeader("Cache-Control", "no-cache");
+    },
+  }),
+);
+app.get("/{*path}", (_q, r) =>
+  r.set("Cache-Control", "no-cache").sendFile("index.html", { root: "dist" }),
+);
 app.use(
   (
     e: any,

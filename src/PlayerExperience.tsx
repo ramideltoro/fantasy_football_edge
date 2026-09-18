@@ -1,3 +1,4 @@
+import { effectiveStatus } from "../shared/availability";
 import { SortableTable } from "./SortableTable";
 import { QwenValue, QwenDetails } from "./QwenExplanation";
 import {
@@ -584,6 +585,16 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
   }, [p.id]);
   return (
     <article className="dossier">
+      {p.research?.historicalRoster && (
+        <p className="notice">
+          Archived roster record ·{" "}
+          {p.research.asOf
+            ? new Date(p.research.asOf).toLocaleDateString()
+            : "prior week"}
+          . These are historical points and availability; check Yahoo for his
+          current status.
+        </p>
+      )}
       <div className="dossier-identity">
         <Portrait player={p} large />
         <div>
@@ -868,13 +879,13 @@ export function HealthBoard({ players }: { players: PlayerData[] }) {
   const { open } = usePlayers();
   const healthy = players.filter(
     (p) =>
-      !p.status &&
+      !effectiveStatus(p) &&
       !!p.profile &&
       !p.profile.stale &&
       !p.profile.injuries?.length,
   );
   const watch = players.filter(
-    (p) => !!p.status || p.profile?.injuries?.length,
+    (p) => !!effectiveStatus(p) || p.profile?.injuries?.length,
   );
   const out = players.filter(
     (p) =>

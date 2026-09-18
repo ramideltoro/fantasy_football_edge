@@ -15,6 +15,7 @@ export const Player = z.object({
   profile: z.any().optional(),
   nflRole: z.any().optional(),
   research: z.any().optional(),
+  gameDay: z.any().optional(),
   sportsbook: z.custom<SportsbookProjection>().optional(),
   startPct: z.number().nullable(),
   rosterPct: z.number().nullable(),
