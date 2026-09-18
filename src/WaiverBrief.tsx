@@ -154,8 +154,9 @@ export function WaiverBrief({
           Feeds are checked at most hourly during research. Only dated items
           from the past seven days are considered. Player-search results can
           cover several players and require relevance review. Missing news does
-          not mean there is no news. Qwen ranks candidates; numerical
-          projections remain the statistical model’s estimates.
+          not mean there is no news. Qwen’s priority score is the pecking order,
+          not fantasy points. The separate Qwen point forecast is calculated by
+          the model.
         </p>
         {d?.newsSources?.map((s: any) => (
           <p key={s.url}>
