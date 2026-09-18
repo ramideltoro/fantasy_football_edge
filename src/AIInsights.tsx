@@ -1,3 +1,4 @@
+import { PlayerLink, PlayerText, usePlayers } from "./PlayerExperience";
 import { ProjectionStatus } from "./ProjectionStatus";
 import { TeamBrief } from "./TeamBrief";
 import { DecisionCharts } from "./DecisionCharts";
@@ -13,6 +14,7 @@ import {
   Legend,
 } from "recharts";
 export function AIInsights({ owner }: { owner: boolean }) {
+  const { open } = usePlayers();
   const [state, setState] = useState<any>(null),
     [error, setError] = useState(""),
     [selected, setSelected] = useState(""),
@@ -47,9 +49,9 @@ export function AIInsights({ owner }: { owner: boolean }) {
       <section className="panel">
         <h3>Qwen player intelligence</h3>
         <p>
-          Statistical forecasts with Qwen explanations, grounded in Yahoo,
-          nflverse and ESPN. These are experimental recommendations, not
-          guaranteed outcomes.
+          Qwen does the homework. You make the call. Point forecasts use player
+          history, league scoring, ESPN roles and current reporting; Yahoo’s
+          number stays separate.
         </p>
         <p role="status">
           Analysis: {state?.status || "Loading"} · Snapshot:{" "}
@@ -69,8 +71,8 @@ export function AIInsights({ owner }: { owner: boolean }) {
           </button>
         )}
         <p>
-          The Qwen worker requires your Mac and Qwen server to be online.
-          Numerical forecasts are calculated independently of Qwen.
+          The Qwen worker requires your Mac and Qwen server to be online. The
+          roster’s Qwen points are calculated by Qwen from supplied evidence.
         </p>
       </section>
       {d && (
@@ -81,7 +83,9 @@ export function AIInsights({ owner }: { owner: boolean }) {
             {d.qwen && <DecisionCharts data={d} mode="team" />}
             {d.qwen ? (
               <>
-                <p>{d.qwen.summary}</p>
+                <p>
+                  <PlayerText text={d.qwen.summary} />
+                </p>
                 <small>
                   {d.qwen.model} ·{" "}
                   {new Date(d.qwen.generatedAt).toLocaleString()}
@@ -96,9 +100,12 @@ export function AIInsights({ owner }: { owner: boolean }) {
                     <div className="ai-pick ai-action" key={x.id}>
                       <div>
                         <b>
-                          {player?.name} · {locked ? "Game locked" : x.action}
+                          <PlayerLink id={x.id} /> ·{" "}
+                          {locked ? "Game locked" : x.action}
                         </b>
-                        <p>{x.reason}</p>
+                        <p>
+                          <PlayerText text={x.reason} />
+                        </p>
                         <small>Uncertainty: {x.uncertainty}</small>
                       </div>
                     </div>
@@ -158,7 +165,12 @@ export function AIInsights({ owner }: { owner: boolean }) {
                     .map((p: any) => (
                       <tr key={p.id}>
                         <td>
-                          <button onClick={() => setSelected(p.id)}>
+                          <button
+                            onClick={() => {
+                              setSelected(p.id);
+                              open([p.id]);
+                            }}
+                          >
                             {p.name}
                           </button>
                         </td>
@@ -185,7 +197,9 @@ export function AIInsights({ owner }: { owner: boolean }) {
           </section>
           {p && (
             <section className="panel">
-              <h3>{p.name}: usage and recent results</h3>
+              <h3>
+                <PlayerLink id={p.id} />: usage and recent results
+              </h3>
               <p>{p.method}</p>
               {p.missing.length > 0 && (
                 <p>Missing evidence: {p.missing.join(", ")}</p>
@@ -261,7 +275,7 @@ export function AIInsights({ owner }: { owner: boolean }) {
               <div className="watch" key={x.slot + x.playerId}>
                 <b>{x.slot}</b>
                 <span>
-                  {d.players.find((p: any) => p.id === x.playerId)?.name}
+                  <PlayerLink id={x.playerId} />
                   {x.locked ? " · locked" : ""}
                 </span>
               </div>

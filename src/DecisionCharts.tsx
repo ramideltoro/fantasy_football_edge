@@ -1,3 +1,4 @@
+import { PlayerLink, PlayerText, PlayerChartTick } from "./PlayerExperience";
 import {
   ResponsiveContainer,
   BarChart,
@@ -48,7 +49,7 @@ export function DecisionCharts({
                 type="category"
                 dataKey="name"
                 width={120}
-                tick={{ fill: "#d8deea", fontSize: 12 }}
+                tick={<PlayerChartTick vertical />}
               />
               <Tooltip
                 contentStyle={{
@@ -76,7 +77,8 @@ export function DecisionCharts({
           <summary>View chart values</summary>
           {rows.map((r: any) => (
             <p key={r.name}>
-              {r.name}: {r.points?.toFixed(2) ?? "unavailable"} points
+              <PlayerLink name={r.name} />:{" "}
+              {r.points?.toFixed(2) ?? "unavailable"} points
             </p>
           ))}
         </details>

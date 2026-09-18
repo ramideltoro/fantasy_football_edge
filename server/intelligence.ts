@@ -4,6 +4,7 @@ import { advice } from "../shared/advice.ts";
 import { teamBriefFacts } from "../shared/teamBrief.ts";
 import {
   initProjections,
+  claimProjection,
   enqueueProjections,
   saveProjection,
   projectionMap,
@@ -56,7 +57,7 @@ export async function installIntelligence(
     "UPDATE intelligence SET status='queued' WHERE status='building'",
   );
   await db.query(
-    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<8",
+    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<10",
   );
   await db.query(
     "ALTER TABLE intelligence ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0",
@@ -98,8 +99,14 @@ export async function installIntelligence(
   }
   setInterval(() => void tick().catch(() => {}), 30000).unref();
   setTimeout(() => void tick(), 1000).unref();
+  let workTurn = 0;
   app.get("/api/ai/work", async (q, r) => {
     if (!authorized(q)) return r.sendStatus(401);
+    const rosterJob = await claimProjection(db, true);
+    if (rosterJob) return r.json({ job: rosterJob });
+    const projectionJob =
+      ++workTurn % 3 !== 0 ? await claimProjection(db) : null;
+    if (projectionJob) return r.json({ job: projectionJob });
     const newsJob = await claimNews(db);
     if (newsJob) return r.json({ job: newsJob });
     const row = (
@@ -107,7 +114,7 @@ export async function installIntelligence(
         "UPDATE intelligence SET status='analyzing',claimed_at=now(),attempts=attempts+1 WHERE snapshot_id=(SELECT snapshot_id FROM intelligence WHERE status='ready' OR (status='failed' AND attempts<3 AND claimed_at<now()-interval '10 minutes') OR (status='analyzing' AND attempts<3 AND claimed_at<now()-interval '10 minutes') ORDER BY snapshot_id DESC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING snapshot_id,data",
       )
     ).rows[0];
-    if (!row) return r.json({ job: null });
+    if (!row) return r.json({ job: await claimProjection(db) });
     const d = row.data;
     const market = (
       await db.query(
@@ -122,11 +129,16 @@ export async function installIntelligence(
     const forecasts = await projectionMap(db, d.season, d.week);
     for (const p of d.players) {
       const f = forecasts.get(p.id);
-      p.projection = f?.points ?? p.providerProjection;
-      p.method =
-        f?.points != null
-          ? f.method
-          : "Yahoo fallback — insufficient verified statistical evidence";
+      const valid =
+        f &&
+        !f.stale &&
+        f.team === p.team &&
+        f.injury === p.injury &&
+        f.points !== null;
+      p.projection = valid ? f.points : p.providerProjection;
+      p.method = valid
+        ? f.method
+        : "Yahoo fallback — current Qwen forecast unavailable";
     }
     const players = d.players.filter((p: any) => d.shortlist.includes(p.id));
     r.json({
@@ -206,7 +218,7 @@ export async function installIntelligence(
     const map = await projectionMap(db, latest.season, latest.week);
     const status = (
       await db.query(
-        "SELECT status,count(*)::int FROM projection_jobs WHERE season=$1 AND week=$2 GROUP BY status",
+        "SELECT status,count(*)::int FROM projection_jobs WHERE season=$1 AND week=$2 AND data->>'method'='qwen-points-v4' GROUP BY status",
         [latest.season, latest.week],
       )
     ).rows;
@@ -303,14 +315,18 @@ export async function installIntelligence(
       );
       for (const p of current.data.players) {
         const f = forecasts.get(p.id);
-        if (f?.team === p.team && f.points !== null) {
+        if (
+          f?.team === p.team &&
+          !f.stale &&
+          f.injury === p.injury &&
+          f.points !== null
+        ) {
           p.projection = f.points;
           p.method = f.method;
           p.aiProjection = f;
         } else {
           p.projection = p.providerProjection;
-          p.method =
-            "Yahoo fallback — insufficient verified statistical history";
+          p.method = "Yahoo fallback — current Qwen forecast unavailable";
         }
       }
       const active = applyProjections(latest.data, forecasts);
@@ -400,7 +416,7 @@ export async function installIntelligence(
         yahooMae: mae("baseline"),
         points,
         method:
-          "Earliest stored pre-kickoff statistical forecast compared with completed imported outcomes; Qwen explanations are not numerical forecasts.",
+          "Earliest stored pre-kickoff statistical forecast compared with completed imported outcomes; this historical scorecard predates the separate Qwen point forecast pipeline.",
       },
     });
   });

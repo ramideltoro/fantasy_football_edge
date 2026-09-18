@@ -1,4 +1,8 @@
-import { statisticalProjection, projectionMethod } from "../shared/statisticalProjection.ts";
+import {
+  qwenPointsMethod,
+  projectionRequest,
+  validateQwenPoints,
+} from "../shared/qwenPoints.ts";
 import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import { z } from "zod";
@@ -6,19 +10,27 @@ export async function initProjections(db: Pool) {
   await db.query(
     `CREATE TABLE IF NOT EXISTS projection_jobs(id bigserial PRIMARY KEY,hash text UNIQUE NOT NULL,snapshot_id bigint REFERENCES snapshots(id),season int NOT NULL,week int NOT NULL,data jsonb NOT NULL,result jsonb,status text NOT NULL DEFAULT 'ready',created_at timestamptz NOT NULL DEFAULT now(),claimed_at timestamptz,completed_at timestamptz,error text);`,
   );
+  await db.query(
+    "ALTER TABLE projection_jobs ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0",
+  );
 }
 export async function enqueueProjections(db: Pool, id: string, d: any) {
   const players = [...d.players].sort(
     (a: any, b: any) =>
-      a.position.localeCompare(b.position) || a.id.localeCompare(b.id),
+      Number(!a.slot) - Number(!b.slot) || a.id.localeCompare(b.id),
   );
-  for (let i = 0; i < players.length; i += 8) {
+  const market = (
+    await db.query("SELECT data->'market' AS market FROM news_state WHERE id=1")
+  ).rows[0]?.market;
+  for (let i = 0; i < players.length; i += 3) {
+    const batch = players.slice(i, i + 3);
     const input = {
-      method: projectionMethod,
+      method: "qwen-points-v4",
+      priority: batch.some((p: any) => p.slot) ? 0 : 1,
       season: d.season,
       week: d.week,
       scoring: d.scoring,
-      players: players.slice(i, i + 8).map((p: any) => ({
+      players: batch.map((p: any) => ({
         id: p.id,
         name: p.name,
         position: p.position,
@@ -28,86 +40,90 @@ export async function enqueueProjections(db: Pool, id: string, d: any) {
         bye: p.bye,
         nflRole: p.nflRole,
         kickoffAt: p.kickoffAt,
+        locked: p.locked,
         history: p.researchHistory,
-        news: p.headlines.map((n: any) => ({
+        fantasyHistory: p.history,
+        injuryReports: p.profile?.injuries || [],
+        news: p.headlines.slice(0, 3).map((n: any) => ({
           title: n.title,
-          excerpt: n.excerpt?.slice(0, 180),
+          excerpt: n.excerpt?.slice(0, 300),
           source: n.source,
           publishedAt: n.publishedAt,
           url: n.url,
           searchResult: !!n.searchPlayer,
         })),
+        market: (market?.games || [])
+          .filter((g: any) =>
+            g.teams?.some(
+              (t: string) => t.toUpperCase() === p.team.toUpperCase(),
+            ),
+          )
+          .map((g: any) => ({
+            spread: g.spread,
+            total: g.total,
+            provider: g.provider,
+            updatedAt: g.updatedAt,
+          })),
       })),
     };
+    // Stable groups prevent each Yahoo poll from burying unfinished model work.
     const hash = createHash("sha256")
-      .update(JSON.stringify({ ...input, refreshWindow: Math.floor(Date.now()/14400000) }))
+      .update(
+        JSON.stringify({
+          method: input.method,
+          season: d.season,
+          week: d.week,
+          players: input.players.map((p) => [
+            p.id,
+            p.team,
+            p.injury,
+            p.bye,
+            p.nflRole,
+            p.news.map((n: any) => [n.url, n.publishedAt]),
+          ]),
+          window: Math.floor(Date.now() / 14400000),
+        }),
+      )
       .digest("hex");
     await db.query(
-      "INSERT INTO projection_jobs(hash,snapshot_id,season,week,data,result,status,completed_at) VALUES($1,$2,$3,$4,$5,$6,'complete',now()) ON CONFLICT(hash) DO NOTHING",
-      [hash, id, d.season, d.week, input, JSON.stringify(input.players.map(p => statisticalProjection(p,input)))],
+      "UPDATE projection_jobs SET status='superseded' WHERE status='ready' AND season=$1 AND week=$2 AND hash<>$3 AND data->>'method'='qwen-points-v4' AND data->'players'->0->>'id'=$4",
+      [d.season, d.week, hash, input.players[0].id],
+    );
+    await db.query(
+      "INSERT INTO projection_jobs(hash,snapshot_id,season,week,data,status) VALUES($1,$2,$3,$4,$5,'ready') ON CONFLICT(hash) DO NOTHING",
+      [hash, id, d.season, d.week, input],
     );
   }
   await db.query(
-    "UPDATE projection_jobs SET status='superseded' WHERE status IN ('ready','analyzing') AND snapshot_id<=$1 AND season=$2 AND week=$3",
-    [id, d.season, d.week],
+    "UPDATE projection_jobs SET status='superseded' WHERE status='ready' AND (data->>'method'<>'qwen-points-v4' OR season<>$1 OR week<>$2 OR created_at<now()-interval '8 hours')",
+    [d.season, d.week],
   );
 }
-export async function claimProjection(db: Pool) {
+export async function claimProjection(db: Pool, rosterOnly = false) {
   const row = (
     await db.query(
-      "UPDATE projection_jobs SET status='analyzing',claimed_at=now() WHERE id=(SELECT qj.id FROM projection_jobs qj WHERE status='ready' OR (status='analyzing' AND claimed_at<now()-interval '10 minutes') ORDER BY snapshot_id DESC, (data->'players'->0->>'position' IN ('QB','K','DEF')) DESC, (SELECT count(*) FROM projection_jobs done WHERE done.status='complete' AND done.data->'players'->0->>'position'=qj.data->'players'->0->>'position') ASC, id DESC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id,data",
+      "UPDATE projection_jobs SET status='analyzing',claimed_at=now(),attempts=attempts+1 WHERE id=(SELECT id FROM projection_jobs WHERE data->>'method'='qwen-points-v4' AND (NOT $1::boolean OR data->>'priority'='0') AND attempts<3 AND (status='ready' OR (status IN ('analyzing','failed') AND claimed_at<now()-interval '10 minutes')) ORDER BY (data->>'priority')::int ASC, created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id,data",
+      [rosterOnly],
     )
   ).rows[0];
   if (!row) return null;
-  const d = structuredClone(row.data);
-  for (const p of d.players) {
-    p.news = p.news.slice(0, 1);
-    for (const n of p.news) delete n.url;
-    p.history = p.history?.map((r: any) =>
-      Object.fromEntries(
-        Object.entries(r).filter(
-          ([k, v]) => k === "season" || k === "week" || v !== 0,
-        ),
-      ),
-    );
-  }
+  const request = projectionRequest(row.data);
   return {
     id: row.id,
     kind: "projection",
-    prompt: JSON.stringify({
-      task: "Estimate CURRENT WEEK fantasy points independently using ONLY provided historical statistics, league scoring and news. Yahoo projections are deliberately absent. Return forecasts for EVERY supplied id, with points (number or null), low/high plausible outcome range (not calibrated confidence), and one short reason. Do not use your memory as current evidence. Prior-season stats are historical context. Reddit is unverified opinion; search titles do not establish facts. For no usable history or substantive news, use null, not an invented number. Account for role, injuries and opponent where supported. Never claim most accurate or guaranteed.",
-      ...d,
-    }),
-    format: {
-      type: "object",
-      required: ["forecasts"],
-      properties: {
-        forecasts: {
-          type: "array",
-          minItems: d.players.length,
-          maxItems: d.players.length,
-          items: {
-            type: "object",
-            required: ["id", "points", "low", "high", "reason"],
-            properties: {
-              id: { type: "string", enum: d.players.map((p: any) => p.id) },
-              points: { type: ["number", "null"], minimum: -20, maximum: 80 },
-              low: { type: ["number", "null"], minimum: -30, maximum: 100 },
-              high: { type: ["number", "null"], minimum: -30, maximum: 100 },
-              reason: { type: "string", maxLength: 180 },
-            },
-          },
-        },
-      },
-    },
+    prompt: JSON.stringify(request.context),
+    format: request.format,
   };
 }
+
 const Forecast = z.object({
   id: z.string(),
   points: z.number().min(-20).max(80).nullable(),
   low: z.number().min(-30).max(100).nullable(),
   high: z.number().min(-30).max(100).nullable(),
   reason: z.string().max(240),
+  playProbability: z.number().min(0).max(100).nullable().optional(),
+  startProbability: z.number().min(0).max(100).nullable().optional(),
 });
 export function validateForecasts(raw: any, input: any) {
   const rows = z.object({ forecasts: z.array(Forecast) }).parse(raw).forecasts;
@@ -127,8 +143,11 @@ export function validateForecasts(raw: any, input: any) {
         x.high < x.points)
     )
       throw Error("Invalid range");
+    if (p.locked && x.points !== null)
+      throw Error("New forecasts cannot be made after kickoff");
     const supported =
       p.history?.length > 0 ||
+      p.market?.some((g: any) => g.total != null) ||
       p.news?.some((n: any) => !n.searchResult && n.excerpt?.length > 80);
     if (!supported)
       return {
@@ -139,15 +158,18 @@ export function validateForecasts(raw: any, input: any) {
         reason:
           "Insufficient independent statistical or directly matched reporting evidence.",
       };
-    if (p.bye === input.week || ["O", "IR", "PUP", "SUSP"].includes(p.injury))
-      return {
-        ...x,
-        points: 0,
-        low: 0,
-        high: 0,
-        reason:
-          "Imported bye or unavailable designation; verify current status.",
-      };
+    if (
+      !p.locked &&
+      (p.bye === input.week || ["O", "IR", "PUP", "SUSP"].includes(p.injury)) &&
+      (x.points !== 0 || (x.playProbability ?? 0) !== 0)
+    )
+      throw Error("Forecast contradicts unavailable designation");
+    if (
+      x.startProbability != null &&
+      x.playProbability != null &&
+      x.startProbability > x.playProbability
+    )
+      throw Error("Starting probability exceeds playing probability");
     return x;
   });
 }
@@ -165,7 +187,10 @@ export async function saveProjection(db: Pool, body: any) {
     );
     return true;
   }
-  const result = validateForecasts(body.result, row.data);
+  const result =
+    row.data.method === qwenPointsMethod
+      ? validateQwenPoints(body.result, row.data)
+      : validateForecasts(body.result, row.data);
   await db.query(
     "UPDATE projection_jobs SET status='complete',result=$2,completed_at=now(),error=null WHERE id=$1",
     [String(body.id), JSON.stringify(result)],
@@ -175,7 +200,7 @@ export async function saveProjection(db: Pool, body: any) {
 export async function projectionMap(db: Pool, season: number, week: number) {
   const rows = (
     await db.query(
-      "SELECT data,result,completed_at FROM projection_jobs WHERE data->>'method'='statistics-v1' AND season=$1 AND week=$2 AND status='complete' AND completed_at>now()-interval '4 hours' ORDER BY created_at ASC",
+      "SELECT data,result,completed_at FROM projection_jobs WHERE data->>'method'='qwen-points-v4' AND season=$1 AND week=$2 AND status='complete' AND completed_at>now()-interval '24 hours' ORDER BY created_at ASC",
       [season, week],
     )
   ).rows;
@@ -186,7 +211,11 @@ export async function projectionMap(db: Pool, season: number, week: number) {
       map.set(f.id, {
         ...f,
         reason: f.reason,
-        label: "Statistical",
+        label: "Qwen",
+        stale: Date.now() - Date.parse(row.completed_at) > 14400000,
+        injury: p.injury,
+        bye: p.bye,
+        role: p.nflRole,
         generatedAt: row.completed_at,
         team: p.team,
         sources: p.news.map((n: any) => ({
@@ -196,7 +225,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
           publishedAt: n.publishedAt,
         })),
         method:
-          "Recency-weighted current-season scoring; Yahoo excluded; Qwen provides separate commentary.",
+          "Qwen2.5 calculates points and availability estimates from supplied player history, league scoring, ESPN roles, reporting and available game lines. Yahoo projections are excluded.",
       });
     }
   return map;
@@ -204,7 +233,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
 export async function projectionAccuracy(db: Pool) {
   const jobs = (
     await db.query(
-      "SELECT j.data,j.result,j.completed_at,s.data - 'sections' AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' AND j.data->>'method'='statistics-v1' ORDER BY j.completed_at ASC LIMIT 1000",
+      "SELECT j.data,j.result,j.completed_at,s.data - 'sections' AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' AND j.data->>'method'='qwen-points-v4' ORDER BY j.completed_at ASC LIMIT 1000",
     )
   ).rows;
   const predictions = new Map<string, any>();
@@ -247,6 +276,6 @@ export async function projectionAccuracy(db: Pool) {
     qwenMae: mae("ai"),
     yahooMae: mae("yahoo"),
     method:
-      "Earliest completed pre-kickoff statistical estimate versus completed imported results. Lower mean absolute error is better; no improvement is established until measured.",
+      "Earliest completed pre-kickoff Qwen estimate versus completed imported results. Lower mean absolute error is better; no improvement is established until measured.",
   };
 }

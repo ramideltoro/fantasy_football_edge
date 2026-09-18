@@ -1,3 +1,4 @@
+import { playerProfiles } from "./playerProfiles.ts";
 import { waiverNews, matchingNews } from "./waiverNews.ts";
 import { teamBriefFacts } from "../shared/teamBrief.ts";
 import { parse } from "csv-parse/sync";
@@ -70,6 +71,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
   try {
     depth = await depthCharts();
   } catch {}
+  const profiles = await playerProfiles(db, s);
   const aliases: Record<string, string> = { JAC: "JAX", WAS: "WSH", LA: "LAR" };
   const players = [
     ...new Map([...s.available, ...s.players].map((p) => [p.id, p])).values(),
@@ -97,6 +99,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     const rank = depth?.teams?.[aliases[t] || t]?.ranks?.[key];
     return {
       ...result,
+      profile: profiles[p.id] || null,
       researchHistory: (p.position === "DEF" ? teamStats : stats)
         .filter(
           (r: any) =>
@@ -114,8 +117,16 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
         )
         .slice(0, 6)
         .map((row: any) => {
-          const g=games.find((g:any)=>g.game_id===row.game_id);
-          const r={...row,pointsAllowed:g ? ((aliases[g.home_team]||g.home_team)===(aliases[row.team]||row.team) ? g.away_score : g.home_score) : null};
+          const g = games.find((g: any) => g.game_id === row.game_id);
+          const r = {
+            ...row,
+            pointsAllowed: g
+              ? (aliases[g.home_team] || g.home_team) ===
+                (aliases[row.team] || row.team)
+                ? g.away_score
+                : g.home_score
+              : null,
+          };
           return Object.fromEntries(
             [
               "season",
@@ -156,7 +167,12 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
                     !k.startsWith("receiv")
                   : true,
               )
-              .map((k) => [k, k==="pointsAllowed" && r[k]==null ? null : Number(r[k]) || 0]),
+              .map((k) => [
+                k,
+                k === "pointsAllowed" && r[k] == null
+                  ? null
+                  : Number(r[k]) || 0,
+              ]),
           );
         }),
       nflRole:
@@ -194,10 +210,18 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 8,
+    version: 10,
     scoring: scoring(s),
     newsSources: newsResearch.sources,
-    waiverCandidates: ['QB','K','DEF','RB','WR','TE'].flatMap(position => recommendations.filter(p => p.position === position && !p.slot && /^(FA|W)/.test(p.available)).slice(0,2).map(p=>p.id)),
+    waiverCandidates: ["QB", "K", "DEF", "RB", "WR", "TE"].flatMap((position) =>
+      recommendations
+        .filter(
+          (p) =>
+            p.position === position && !p.slot && /^(FA|W)/.test(p.available),
+        )
+        .slice(0, 2)
+        .map((p) => p.id),
+    ),
     teamFacts: teamBriefFacts(s, lineup),
     snapshotAt: s.capturedAt,
     generatedAt: new Date().toISOString(),

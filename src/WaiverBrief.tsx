@@ -1,5 +1,6 @@
+import { PlayerLink, PlayerText } from "./PlayerExperience";
 import { DecisionCharts } from "./DecisionCharts";
-import {useAnalysis} from "./useAnalysis";
+import { useAnalysis } from "./useAnalysis";
 import type { PlayerData } from "../shared/model";
 export function WaiverBrief({
   pool,
@@ -8,8 +9,8 @@ export function WaiverBrief({
   pool: PlayerData[];
   onPlayer: (p: PlayerData) => void;
 }) {
-  const state=useAnalysis();
-  const error=false;
+  const state = useAnalysis();
+  const error = false;
   const d = state?.data,
     picks = (d?.qwen || state?.previousQwen)?.waivers;
   return (
@@ -23,13 +24,13 @@ export function WaiverBrief({
       </div>
       <p>
         Players to consider, ranked by Qwen using projected points, NFL roles
-        and recent reporting. Research covers up to two candidates for each of the six positions. Predictions and
-        reported opinions are uncertain.
+        and recent reporting. Research covers up to two candidates for each of
+        the six positions. Predictions and reported opinions are uncertain.
       </p>
       <p role="status">
         {error
           ? "Unable to refresh analysis."
-          : `Analysis: ${state?.status || "loading"}. ${state?.qwenUpdated?"Updated":"Not updated — previous suggestions retained"}`}
+          : `Analysis: ${state?.status || "loading"}. ${state?.qwenUpdated ? "Updated" : "Not updated — previous suggestions retained"}`}
       </p>
       {picks ? (
         <>
@@ -69,7 +70,9 @@ export function WaiverBrief({
                       <span className="ai-eyebrow">
                         WHY CONSIDER THIS PLAYER
                       </span>
-                      <p>{x.summary || x.reason}</p>
+                      <p>
+                        <PlayerText text={x.summary || x.reason} />
+                      </p>
                     </div>
                     <small>
                       {x.summaryKind || "AI interpretation"} · verify against
@@ -77,9 +80,25 @@ export function WaiverBrief({
                     </small>
                     <details className="ai-evidence">
                       <summary>Facts behind this pick</summary>
-                      <p>{x.reason}</p>
+                      <p>
+                        <PlayerText text={x.reason} />
+                      </p>
                     </details>
-                    {!x.news.length && <details className="ai-evidence"><summary>Related reporting · not cited by Qwen</summary>{d?.players?.find((player:any)=>player.id===x.id)?.headlines.map((n:any)=><p key={n.url}><a href={n.url} target="_blank" rel="noreferrer">{n.title}</a> · {n.source}</p>)}</details>}
+                    {!x.news.length && (
+                      <details className="ai-evidence">
+                        <summary>Related reporting · not cited by Qwen</summary>
+                        {d?.players
+                          ?.find((player: any) => player.id === x.id)
+                          ?.headlines.map((n: any) => (
+                            <p key={n.url}>
+                              <a href={n.url} target="_blank" rel="noreferrer">
+                                {n.title}
+                              </a>{" "}
+                              · {n.source}
+                            </p>
+                          ))}
+                      </details>
+                    )}
                     {x.news.length ? (
                       <details className="ai-evidence">
                         <summary>{x.news.length} reporting sources</summary>
@@ -115,8 +134,11 @@ export function WaiverBrief({
             <p>Qwen did not identify a supported addition in this run.</p>
           )}
           <small>
-            Roster snapshot: {new Date(state.snapshotAt).toLocaleString()} · Qwen:{" "}
-            {new Date((d?.qwen||state?.previousQwen).generatedAt).toLocaleString()}
+            Roster snapshot: {new Date(state.snapshotAt).toLocaleString()} ·
+            Qwen:{" "}
+            {new Date(
+              (d?.qwen || state?.previousQwen).generatedAt,
+            ).toLocaleString()}
           </small>
         </>
       ) : (

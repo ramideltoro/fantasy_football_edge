@@ -10,7 +10,7 @@ export function leagueOverview(s: SnapshotData, owner = false) {
     const own = link.url.endsWith("/" + s.team.id);
     return [
       {
-        name: own ? s.team.name : owner ? link.text : `Opponent ${i + 1}`,
+        name: own ? s.team.name : link.text.split("\n")[0].trim(),
         own,
         record: r.cells[2],
         pointsFor: number(r.cells[3]),
@@ -30,6 +30,19 @@ export function leagueOverview(s: SnapshotData, owner = false) {
     standings,
     matchup: live
       ? {
+          opponentName:
+            m?.tables
+              .flatMap((t) => t.rows)
+              .flatMap((r) => r.links)
+              .find(
+                (l) =>
+                  /\/f1\/\d+\/\d+$/.test(l.url) &&
+                  !l.url.endsWith("/" + s.team.id),
+              )
+              ?.text.split("\n")[0]
+              .trim() ||
+            standings.find((r) => !r.own && text.includes(r.name))?.name ||
+            "Opponent",
           ownActual: number(scores?.[1]),
           opponentActual: number(scores?.[2]),
           ownProjected: number(live[1]),

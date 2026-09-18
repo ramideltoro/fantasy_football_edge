@@ -64,7 +64,11 @@ async function main() {
     );
     const input = JSON.parse(job.prompt);
     const request =
-      job.kind === "news" ? newsRequest(input) : analysisRequest(input);
+      job.kind === "news"
+        ? newsRequest(input)
+        : job.kind === "projection"
+          ? { format: job.format, context: input }
+          : analysisRequest(input);
     const body = {
       model: "qwen2.5:3b",
       stream: false,
@@ -82,10 +86,20 @@ async function main() {
     await progress(
       job.kind === "news"
         ? "Qwen evaluating cited events for " +
-            input.players.map((p: any) => p.name).join(", ") +
+            (Array.isArray(input.players)
+              ? input.players
+              : Object.values(input.players)
+            )
+              .map((p: any) => p.name)
+              .join(", ") +
             "; batch #" +
             job.id
-        : "Qwen generating roster and six-position waiver analysis; waiting for inference",
+        : job.kind === "projection"
+          ? "Qwen calculating player points and availability for " +
+            Object.values(input.players)
+              .map((p: any) => p.name)
+              .join(", ")
+          : "Qwen generating roster and six-position waiver analysis; waiting for inference",
     );
     const raw = await new Promise<string>((resolve, reject) => {
       const child = spawn(
@@ -147,7 +161,9 @@ async function main() {
     const result =
       job.kind === "news"
         ? (validateNewsResult(parsed, input), parsed)
-        : analysisResult(parsed, request.context);
+        : job.kind === "projection"
+          ? parsed
+          : analysisResult(parsed, request.context);
     const saved = await fetch(
       config.endpoint +
         (job.kind === "news"
@@ -201,7 +217,11 @@ async function main() {
     if (job)
       await fetch(
         config.endpoint +
-          (job.kind === "news" ? "/api/ai/news-result" : "/api/ai/result"),
+          (job.kind === "news"
+            ? "/api/ai/news-result"
+            : job.kind === "projection"
+              ? "/api/ai/projection-result"
+              : "/api/ai/result"),
         {
           method: "POST",
           headers,

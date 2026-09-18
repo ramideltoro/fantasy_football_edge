@@ -1,3 +1,4 @@
+import { publicJsonCache } from "./publicCache.ts";
 import { installNews } from "./newsService.ts";
 import { projectionMap } from "./projections.ts";
 import { applyProjections } from "../shared/applyProjections.ts";
@@ -43,7 +44,7 @@ app.use(
       directives: {
         "script-src": ["'self'"],
         "style-src": ["'self'", "'unsafe-inline'"],
-        "img-src": ["'self'", "data:"],
+        "img-src": ["'self'", "data:", "https://a.espncdn.com"],
         "connect-src": ["'self'"],
         "font-src": ["'self'"],
       },
@@ -57,6 +58,13 @@ app.use("/api", (_q, r, n) => {
   r.set("Cache-Control", "no-store");
   n();
 });
+for (const route of [
+  "/api/intelligence",
+  "/api/projections",
+  "/api/news",
+  "/api/players/:id/news",
+])
+  app.get(route, publicJsonCache(10000));
 const cookie = (q: express.Request) =>
   q.headers.cookie
     ?.split("; ")
@@ -353,6 +361,11 @@ app.post(
     }
   },
 );
+let historicalCache: {
+  key: string;
+  at: number;
+  pending: Promise<any[]>;
+} | null = null;
 app.get("/api/dashboard", async (q, r) => {
   const row = (
     await db.query(
@@ -374,12 +387,70 @@ app.get("/api/dashboard", async (q, r) => {
     raw,
     await projectionMap(db, raw.season, raw.week),
   );
-  const historicalRows = (
+  const intelligence = (
     await db.query(
-      "SELECT data FROM snapshots WHERE data->>'season'=$1 AND data->'team'->>'id'=$2 AND data->'league'->>'id'=$3 ORDER BY captured_at DESC LIMIT 1000",
-      [String(s.season), s.team.id, s.league.id],
+      "SELECT data FROM intelligence WHERE data IS NOT NULL AND (data->>'season')::int=$1 AND (data->>'week')::int=$2 ORDER BY snapshot_id DESC LIMIT 1",
+      [raw.season, raw.week],
     )
-  ).rows;
+  ).rows[0]?.data;
+  const depth = await depthCharts().catch(() => null);
+  const teamAliases: Record<string, string> = {
+    JAC: "JAX",
+    WAS: "WSH",
+    LA: "LAR",
+  };
+  for (const p of [...s.players, ...s.available]) {
+    const research = intelligence?.players?.find(
+      (r: any) => r.id === p.id && r.team === p.team,
+    );
+    p.profile = research?.profile || null;
+    p.research = research
+      ? {
+          history: research.history,
+          opponent: research.opponent,
+          headlines: research.headlines,
+          generatedAt: intelligence.generatedAt,
+        }
+      : null;
+    const t =
+      depth?.teams?.[teamAliases[p.team.toUpperCase()] || p.team.toUpperCase()];
+    const key = p.name
+      .toLowerCase()
+      .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
+      .replace(/[^a-z0-9]/g, "");
+    const rank = t?.ranks?.[key];
+    p.nflRole = {
+      rank: rank ?? null,
+      label:
+        p.position === "DEF"
+          ? "Team defense"
+          : rank === 1
+            ? "Starter"
+            : rank > 1
+              ? "Backup"
+              : "Unconfirmed",
+      source: t?.source,
+      asOf: t?.asOf,
+    };
+  }
+  const historyKey = [s.season, s.team.id, s.league.id].join(":");
+  if (
+    !historicalCache ||
+    historicalCache.key !== historyKey ||
+    Date.now() - historicalCache.at > 10000
+  ) {
+    const pending = db
+      .query(
+        "SELECT data - 'sections' AS data FROM snapshots WHERE data->>'season'=$1 AND data->'team'->>'id'=$2 AND data->'league'->>'id'=$3 ORDER BY captured_at DESC LIMIT 1000",
+        [String(s.season), s.team.id, s.league.id],
+      )
+      .then((result) => result.rows);
+    historicalCache = { key: historyKey, at: Date.now(), pending };
+    pending.catch(() => {
+      historicalCache = null;
+    });
+  }
+  const historicalRows = [...(await historicalCache.pending)];
   const history = historicalRows.reverse().map((x) => ({
     capturedAt: x.data.capturedAt,
     week: x.data.week,

@@ -1,3 +1,4 @@
+import { PlayerLink, PlayerText } from "./PlayerExperience";
 import { useEffect, useState } from "react";
 import {
   ResponsiveContainer,
@@ -76,7 +77,7 @@ export function EventCard({
           {e.playerName}
         </button>
       ) : (
-        <strong>{e.playerName}</strong>
+        <PlayerLink id={e.playerId} name={e.playerName} />
       )}
       <p>
         {a?.interpretation ||
@@ -125,9 +126,9 @@ export function NewsHub({ onPlayer }: { onPlayer: (id: string) => void }) {
       <div className="section-heading">
         <div>
           <span className="eyebrow">PLAYER INTELLIGENCE</span>
-          <h3>What changed?</h3>
+          <h3>The sideline wire</h3>
           <p>
-            Fresh reporting and cautious implications, separated from opinion.
+            Rumors don’t score points. Here’s what the sources actually say.
           </p>
         </div>
         <small>News checked {date(n?.lastCollectedAt)}</small>
@@ -353,7 +354,7 @@ export function DecisionOverview({
     m && m.ownProjected != null && m.opponentProjected != null
       ? [
           { team: "Your team", points: m.ownProjected },
-          { team: "Opponent", points: m.opponentProjected },
+          { team: m.opponentName || "Opponent", points: m.opponentProjected },
         ]
       : [];
   return (

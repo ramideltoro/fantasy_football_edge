@@ -19,10 +19,13 @@ export function ProjectionDetails({ player: p }: { player: PlayerData }) {
       {p.aiProjection && (
         <>
           <p>{p.aiProjection.reason}</p>
-          <p>
-            Historical variability: {p.aiProjection.low ?? "—"}–{p.aiProjection.high ?? "—"}{" "}
-            · illustrative, not calibrated confidence.
-          </p>
+          {p.aiProjection.low != null && p.aiProjection.high != null && (
+            <p>
+              Historical variability: {p.aiProjection.low ?? "—"}–
+              {p.aiProjection.high ?? "—"} · illustrative, not calibrated
+              confidence.
+            </p>
+          )}
           <small>
             Generated {new Date(p.aiProjection.generatedAt).toLocaleString()}.{" "}
             {p.aiProjection.method}

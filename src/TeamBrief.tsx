@@ -1,3 +1,4 @@
+import { PlayerLink, PlayerText } from "./PlayerExperience";
 export function TeamBrief({ data: d, status }: { data: any; status: string }) {
   const brief = d.qwen?.teamBrief;
   const labels: Record<string, string> = {
@@ -14,22 +15,24 @@ export function TeamBrief({ data: d, status }: { data: any; status: string }) {
       <div className="ai-heading">
         <div>
           <span className="ai-eyebrow">YOUR WEEKLY GAME PLAN</span>
-          <h3>Team briefing</h3>
+          <h3>The locker-room talk</h3>
         </div>
         <span className="ai-badge">Week {d.week}</span>
       </div>
       {brief ? (
         <>
           <p className="ai-intro">
-            Start with these priorities, then review the supporting player
-            decisions below.
+            Here’s the game plan. No clipboard poetry. Just the calls that
+            matter.
           </p>
           <div className="ai-card-grid">
             {brief.priorities.map((x: any, i: number) => (
               <article className="ai-pick" key={x.key}>
                 <span className="ai-eyebrow">PRIORITY {i + 1}</span>
                 <h4>{labels[x.key] || x.key}</h4>
-                <p>{x.text}</p>
+                <p>
+                  <PlayerText text={x.text} />
+                </p>
               </article>
             ))}
           </div>
@@ -43,7 +46,9 @@ export function TeamBrief({ data: d, status }: { data: any; status: string }) {
                 .map(([key, text]) => (
                   <article key={key}>
                     <h4>{labels[key] || key}</h4>
-                    <p>{String(text)}</p>
+                    <p>
+                      <PlayerText text={String(text)} />
+                    </p>
                   </article>
                 ))}
             </div>

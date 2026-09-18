@@ -1,3 +1,9 @@
+import {
+  PlayerLink,
+  PlayerText,
+  PlayerChartTick,
+  yahooPoints,
+} from "./PlayerExperience";
 import type { PlayerData } from "../shared/model";
 import { useAnalysis } from "./useAnalysis";
 import { useNews } from "./NewsHub";
@@ -133,11 +139,11 @@ export function PositionSuggestions({
                     <ResponsiveContainer width="100%" height={150}>
                       <BarChart
                         data={ranked.map((p) => ({
-                          name: p.name.split(" ").slice(-1)[0],
-                          points: p.providerProjected ?? p.projected,
+                          name: p.name,
+                          points: yahooPoints(p),
                         }))}
                       >
-                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <XAxis dataKey="name" tick={<PlayerChartTick />} />
                         <YAxis />
                         <Tooltip />
                         <Bar
@@ -161,7 +167,7 @@ export function PositionSuggestions({
                             <th>Player</th>
                             <th>Qwen /100</th>
                             <th>Yahoo pts</th>
-                            <th>Stats pts</th>
+                            <th>Qwen pts</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -176,11 +182,7 @@ export function PositionSuggestions({
                                 {picks.find((x: any) => x.id === p.id)?.score ??
                                   "Not scored"}
                               </td>
-                              <td>
-                                {(p.providerProjected ?? p.projected)?.toFixed(
-                                  2,
-                                ) ?? "—"}
-                              </td>
+                              <td>{yahooPoints(p)?.toFixed(2) ?? "—"}</td>
                               <td>
                                 {p.aiProjection?.points?.toFixed(2) ?? "—"}
                               </td>

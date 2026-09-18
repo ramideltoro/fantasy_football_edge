@@ -43,7 +43,21 @@ export function AnalysisRefresh({
     }
   }
   return (
-    <section className="refresh-strip" aria-label="Data freshness">
+    <details className="refresh-strip" aria-label="Data freshness">
+      <summary className="intel-summary">
+        <span>
+          <span className={"status-dot " + (run ? "working" : "")} />
+          {run ? "The film room is working" : "Your latest intel"}
+        </span>
+        <small>
+          Yahoo{" "}
+          {new Date(snapshotAt).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })}{" "}
+          · sources & refresh
+        </small>
+      </summary>
       <div>
         <span className={"status-dot " + (run ? "working" : "")} />
         <strong>
@@ -90,6 +104,6 @@ export function AnalysisRefresh({
         </button>
       </div>
       {notice && <p role="status">{notice}</p>}
-    </section>
+    </details>
   );
 }
