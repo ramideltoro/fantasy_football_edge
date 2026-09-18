@@ -66,7 +66,7 @@ export function SportsbookNumber({
       <strong>{number(s?.points)}</strong>
       <small>
         {s?.points != null
-          ? `Partial · ${s.books.length} books`
+          ? `${s.model ? "Modeled" : "Partial"} · ${s.books.length} books`
           : s?.stale
             ? "Refresh pending"
             : "See coverage"}
@@ -147,6 +147,7 @@ export function SportsbookDetails({
 }: {
   projection?: SportsbookProjection;
 }) {
+  if (s?.model) return <SpecialistBookDetails projection={s} />;
   if (!s)
     return (
       <section className="dossier-section">
@@ -341,6 +342,139 @@ export function SportsbookDetails({
         Week {s.week ?? "—"} · {s.season ?? "—"} · Collected {date(s.fetchedAt)}{" "}
         · Next refresh {date(s.nextAt)}
         {s.error ? ` · ${s.error}` : ""}
+      </small>
+    </section>
+  );
+}
+
+function SpecialistBookDetails({
+  projection: s,
+}: {
+  projection: SportsbookProjection;
+}) {
+  const m = s.model!;
+  return (
+    <section className="dossier-section sportsbook-details">
+      <div className="sportsbook-total">
+        <Coins size={25} />
+        <div>
+          <span className="eyebrow">BOOKIES PROJECTED · MODELED</span>
+          <strong>
+            {number(s.points)} <small>pts</small>
+          </strong>
+        </div>
+        <span>
+          {s.books.length} books
+          <br />
+          {s.matchup}
+        </span>
+      </div>
+      <h4>{m.name}</h4>
+      <p>{m.limitation}</p>
+      <p>{m.formula}</p>
+      <p>
+        {m.historyGames} recent team games, shrunk toward {m.peerGames} league
+        team-games. Each sportsbook gets equal weight.
+      </p>
+      <div
+        className="table-wrap"
+        tabIndex={0}
+        aria-label="Sportsbook specialist calculation"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Book</th>
+              <th>Game total</th>
+              <th>Team spread</th>
+              <th>Implied team / opponent</th>
+              <th>Fantasy points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {m.perBook.map((b) => (
+              <tr key={b.book}>
+                <td>{b.book}</td>
+                <td>{number(b.total)}</td>
+                <td>{number(b.spread)}</td>
+                <td>
+                  {number(b.impliedOwn)} / {number(b.impliedOpponent)}
+                </td>
+                <td>{number(b.points)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <caption>Consensus contribution</caption>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Input average</th>
+              <th>Multiplier</th>
+              <th>Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {s.components.map((c) => (
+              <tr key={c.market}>
+                <td>{c.label}</td>
+                <td>
+                  {number(c.mean)}
+                  <small>{c.unit}</small>
+                </td>
+                <td>{c.multiplier.toFixed(4)}</td>
+                <td>{number(c.points)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <details className="sportsbook-receipts">
+        <summary>All posted game odds · {s.games.length} receipts</summary>
+        <p>
+          Spreads and totals feed this model. Moneylines and reference columns
+          are shown for context.
+        </p>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Book / source</th>
+                <th>Market</th>
+                <th>{s.games[0]?.team || "Team"} quote</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.games.map((g) => (
+                <tr key={`${g.eventId}-${g.book}-${g.market}`}>
+                  <td>
+                    {g.book}
+                    {g.kind === "reference" && (
+                      <small>Reference, not a book</small>
+                    )}
+                  </td>
+                  <td>{g.market}</td>
+                  <td className="odds-raw">{g.raw}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <div className="sportsbook-sources">
+        <a href={GAME_SOURCE} target="_blank" rel="noreferrer">
+          VegasInsider game lines ↗
+        </a>
+        <a href={m.source} target="_blank" rel="noreferrer">
+          nflverse team history ↗
+        </a>
+      </div>
+      <small>
+        Week {s.week} · Collected {date(s.fetchedAt)} · Next refresh{" "}
+        {date(s.nextAt)}
       </small>
     </section>
   );

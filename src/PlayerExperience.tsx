@@ -1,3 +1,4 @@
+import { QwenValue, QwenDetails } from "./QwenExplanation";
 import {
   SportsbookButton,
   SportsbookDetails,
@@ -169,7 +170,13 @@ export function Portrait({
     </span>
   );
 }
-export function Role({ player: p }: { player: PlayerData }) {
+export function Role({
+  player: p,
+  showProbability = true,
+}: {
+  player: PlayerData;
+  showProbability?: boolean;
+}) {
   const f = currentQwen(p);
   const unavailable = ["O", "IR", "PUP", "SUSP"].includes(p.status);
   const probability = f?.startProbability;
@@ -183,15 +190,17 @@ export function Role({ player: p }: { player: PlayerData }) {
       <span>
         {unavailable ? "Unavailable" : p.nflRole?.label || "Checking role"}
       </span>
-      <small>
-        {p.position === "DEF"
-          ? "Team unit · individual probability N/A"
-          : probability != null
-            ? `${pct(probability)} to start · Qwen`
-            : p.locked
-              ? "Game locked"
-              : "Start probability pending"}
-      </small>
+      {showProbability && (
+        <small>
+          {p.position === "DEF"
+            ? "Team unit · individual probability N/A"
+            : probability != null
+              ? `${pct(probability)} to start · Qwen`
+              : p.locked
+                ? "Game locked"
+                : "Start probability pending"}
+        </small>
+      )}
     </span>
   );
 }
@@ -301,13 +310,17 @@ export function PlayerTable({
             <tr>
               <th>Compare</th>
               <th>NFL Starter / Backup</th>
-              <th>Fantasy position</th>
+              {waivers ? (
+                <th>Qwen probability start</th>
+              ) : (
+                <th>Fantasy position</th>
+              )}
               <th>Player</th>
               <th>Slot</th>
               <th>Yahoo projected</th>
               <th>Qwen projected</th>
               <th>
-                Bookies projected<small>Partial points · tap for math</small>
+                Bookies projected<small>Tap for math & coverage</small>
               </th>
               <th>Rostered</th>
               <th title="Actual NFL starts divided by games played this season">
@@ -341,16 +354,25 @@ export function PlayerTable({
                     onClick={() => open([p.id])}
                     aria-label={`NFL role and start probability for ${p.name}`}
                   >
-                    <Role player={p} />
+                    <Role player={p} showProbability={!waivers} />
                   </button>
                 </td>
-                <td data-label="Fantasy position">
-                  <span
-                    className={"slot-tag " + (p.slot === "BN" ? "bench" : "")}
+                {waivers ? (
+                  <td
+                    className="point-cell"
+                    data-label="Qwen probability start"
                   >
-                    {p.slot || p.availability || "Pool"}
-                  </span>
-                </td>
+                    <QwenValue player={p} kind="start" />
+                  </td>
+                ) : (
+                  <td data-label="Fantasy position">
+                    <span
+                      className={"slot-tag " + (p.slot === "BN" ? "bench" : "")}
+                    >
+                      {p.slot || p.availability || "Pool"}
+                    </span>
+                  </td>
+                )}
                 <td data-label="Player">
                   <button className="player-cell" onClick={() => open([p.id])}>
                     <Portrait player={p} />
@@ -376,21 +398,7 @@ export function PlayerTable({
                   className="point-cell qwen-number"
                   data-label="Qwen projected"
                 >
-                  <button
-                    onClick={() => open([p.id])}
-                    aria-label={`Qwen forecast details for ${p.name}`}
-                  >
-                    {points(currentQwen(p)?.points)}
-                    {!currentQwen(p) && (
-                      <small>
-                        {p.locked
-                          ? "Game locked"
-                          : p.aiProjection?.stale
-                            ? "Refresh pending"
-                            : "Calculating"}
-                      </small>
-                    )}
-                  </button>
+                  <QwenValue player={p} />
                 </td>
                 <td
                   className="point-cell sportsbook-cell"
@@ -576,7 +584,7 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
         </div>
         <div>
           <small>QWEN PROJECTED</small>
-          <strong>{points(currentQwen(p)?.points)}</strong>
+          <QwenValue player={p} />
           <span>{q?.stale ? "Refresh pending" : "fantasy points"}</span>
         </div>
         <div>
@@ -650,6 +658,10 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
           <dd>{p.slot ? "On your roster" : p.availability || "Unconfirmed"}</dd>
         </div>
       </dl>
+      <details className="dossier-section">
+        <summary>Qwen calculation · show the math</summary>
+        <QwenDetails player={p} />
+      </details>
       <section className="dossier-section">
         <h4>
           <Zap size={17} /> Qwen’s read

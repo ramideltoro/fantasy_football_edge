@@ -1,11 +1,11 @@
 :root {
-  font-family:
-    Inter,
-    ui-sans-serif,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial,
     sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue",
+    Arial, sans-serif;
+  font-family: var(--font-body);
   color: #e8e9ed;
   background: #0b0d12;
   font-synthesis: none;
@@ -820,7 +820,7 @@ footer span {
 
 /* Shared typography and AI reading hierarchy */
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.55;
 }
@@ -835,7 +835,7 @@ summary {
 .recharts-wrapper,
 .recharts-text,
 .recharts-tooltip-wrapper {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 p {
   line-height: 1.65;
@@ -1050,7 +1050,7 @@ button,
 input,
 select,
 textarea {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 button,
 a,
@@ -1527,7 +1527,7 @@ h2,
 .game-day-banner strong,
 .roster-count,
 .health-box strong {
-  font-family: Anton, Impact, sans-serif;
+  font-family: var(--font-body);
   font-weight: 400;
   letter-spacing: 0.015em;
 }
@@ -1563,7 +1563,7 @@ main {
   box-shadow: 4px 4px 0 #ff741f;
 }
 .brand b {
-  font-family: Anton, Impact, sans-serif;
+  font-family: var(--font-body);
   font-weight: 400;
   font-size: 34px;
   letter-spacing: 2px;
@@ -1742,7 +1742,7 @@ nav button.active {
   text-align: right;
 }
 .roster-count small {
-  font-family: Inter, sans-serif;
+  font-family: var(--font-body);
   font-size: 9px;
   display: block;
   letter-spacing: 2px;
@@ -2987,14 +2987,12 @@ main > header {
 }
 .sportsbook-total strong {
   display: block;
-  font-family: Anton, sans-serif;
+  font-family: var(--font-body);
   font-size: 38px;
   font-weight: 400;
 }
 .sportsbook-total strong small {
-  font:
-    12px Inter,
-    sans-serif;
+  font: 12px var(--font-body);
   display: inline;
 }
 .sportsbook-total > span {
@@ -3130,4 +3128,108 @@ main > header {
 .sportsbook-details th {
   background: #2b2418;
   color: #d7c29e;
+}
+
+/* Apple system typography, using San Francisco on Apple devices. */
+h1,
+h2,
+h3,
+.game-day-banner strong,
+.brand b,
+.roster-count,
+.health-box strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+.brand b {
+  font-size: 30px;
+  letter-spacing: -0.025em;
+}
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-body);
+}
+.qwen-explain-number {
+  color: #ffca60;
+  text-align: left;
+  padding: 5px 0;
+  border-bottom: 1px dotted #ab8135;
+}
+.qwen-explain-number strong {
+  font-variant-numeric: tabular-nums;
+}
+.qwen-explain-number small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: #c8b78e;
+}
+.qwen-dialog {
+  max-width: 900px;
+}
+.qwen-explanation {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.qwen-explanation-score {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  background: #33250f;
+  border: 1px solid #876128;
+  border-radius: 12px;
+  color: #ffca60;
+}
+.qwen-explanation-score small {
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.qwen-explanation-score strong {
+  display: block;
+  font-size: 36px;
+  line-height: 1.2;
+}
+.qwen-explanation table {
+  white-space: normal;
+  font-size: 12px;
+}
+.qwen-explanation th {
+  background: #2b2418;
+  color: #d7c29e;
+}
+.qwen-explanation .source-list {
+  margin-top: 20px;
+  color: #e7b550;
+}
+.qwen-explanation summary {
+  cursor: pointer;
+}
+.matchup-commentary {
+  border-top: 3px solid #ffbb38;
+}
+.matchup-commentary p {
+  font-size: 15px;
+  line-height: 1.75;
+  max-width: 100ch;
+}
+.matchup-commentary small {
+  color: #bda983;
+}
+.cooler-chart .recharts-legend-item-text {
+  color: inherit !important;
+}
+@media (max-width: 600px) {
+  .qwen-explanation table {
+    min-width: 460px;
+  }
+  .matchup-commentary h2 {
+    font-size: 25px;
+  }
+  .matchup-commentary p {
+    font-size: 14px;
+  }
 }

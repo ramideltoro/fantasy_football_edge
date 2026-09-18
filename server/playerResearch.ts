@@ -1,3 +1,4 @@
+import { averageStats, calibratedBaseline } from "../shared/leagueScoring.ts";
 import { playerProfiles } from "./playerProfiles.ts";
 import { waiverNews, matchingNews } from "./waiverNews.ts";
 import { teamBriefFacts } from "../shared/teamBrief.ts";
@@ -73,6 +74,65 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
   } catch {}
   const profiles = await playerProfiles(db, s);
   const aliases: Record<string, string> = { JAC: "JAX", WAS: "WSH", LA: "LAR" };
+  const priorToWeek = (r: any) =>
+    r.season_type === "REG" &&
+    (Number(r.season) < s.season ||
+      (Number(r.season) === s.season && Number(r.week) < s.week));
+  const gameIndex = new Map(games.map((g: any) => [g.game_id, g]));
+  const withScores = (r: any) => {
+    const g: any = gameIndex.get(r.game_id);
+    const home =
+      g &&
+      (aliases[g.home_team] || g.home_team) === (aliases[r.team] || r.team);
+    const score = (value: unknown) =>
+      value != null && value !== "" && Number.isFinite(Number(value))
+        ? Number(value)
+        : null;
+    return {
+      ...r,
+      pointsAllowed: g ? score(home ? g.away_score : g.home_score) : null,
+      teamPoints: g ? score(home ? g.home_score : g.away_score) : null,
+    };
+  };
+  const eligibleTeams = teamStats.filter(priorToWeek).map(withScores);
+  const eligiblePlayers = stats.filter(priorToWeek).map(withScores);
+  const peerRows = Object.fromEntries(
+    ["QB", "RB", "WR", "TE", "K", "DEF"].map((pos) => [
+      pos,
+      pos === "DEF"
+        ? eligibleTeams
+        : eligiblePlayers.filter(
+            (r) =>
+              r.position === pos &&
+              (pos === "QB"
+                ? Number(r.attempts) >= 10
+                : pos === "K"
+                  ? Number(r.fg_att) + Number(r.pat_att) > 0
+                  : pos === "RB"
+                    ? Number(r.carries) + Number(r.targets) >= 5
+                    : Number(r.targets) >= (pos === "TE" ? 2 : 3)),
+          ),
+    ]),
+  );
+  const priors = Object.fromEntries(
+    Object.entries(peerRows).map(([pos, rows]) => [
+      pos,
+      { mean: averageStats(rows), samples: rows.length },
+    ]),
+  );
+  const teamKickerPrior = {
+    mean: averageStats(eligibleTeams),
+    samples: eligibleTeams.length,
+  };
+  const recent = (rows: any[]) =>
+    rows
+      .sort(
+        (a, b) =>
+          Number(b.season) - Number(a.season) ||
+          Number(b.week) - Number(a.week),
+      )
+      .slice(0, 8);
+  const rules = scoring(s);
   const players = [
     ...new Map([...s.available, ...s.players].map((p) => [p.id, p])).values(),
   ].map((p) => {
@@ -97,8 +157,61 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
       .replace(/\b(jr|sr|ii|iii|iv)\b/g, "")
       .replace(/[^a-z0-9]/g, "");
     const rank = depth?.teams?.[aliases[t] || t]?.ranks?.[key];
+    const statHistory = recent(
+      (p.position === "DEF" ? eligibleTeams : eligiblePlayers).filter((r) =>
+        p.position === "DEF"
+          ? (aliases[r.team] || r.team) === (aliases[t] || t)
+          : keyName(r.player_display_name) === keyName(p.name) &&
+            r.position === p.position,
+      ),
+    );
+    const teamHistory = recent(
+      eligibleTeams.filter(
+        (r) => (aliases[r.team] || r.team) === (aliases[t] || t),
+      ),
+    );
+    let baseline = calibratedBaseline(
+      p.position,
+      statHistory,
+      priors[p.position] || [],
+      rules,
+    );
+    if (baseline && p.position === "QB" && rank > 1) {
+      baseline = {
+        ...baseline,
+        points: baseline.points * 0.1,
+        components: baseline.components.map((c) => ({
+          ...c,
+          quantity: c.quantity * 0.1,
+          points: c.points * 0.1,
+        })),
+        limitation:
+          "Backup QB: baseline workload is reduced to 10% of the statistical estimate until starter evidence changes.",
+      };
+    }
+    const specialist = ["K", "DEF"].includes(p.position)
+      ? {
+          baseline: calibratedBaseline(
+            p.position,
+            teamHistory,
+            p.position === "K" ? teamKickerPrior : priors.DEF,
+            rules,
+          ),
+          teamHistory: teamHistory.map((r) => ({
+            season: Number(r.season),
+            week: Number(r.week),
+            pointsAllowed: r.pointsAllowed,
+            teamPoints: r.teamPoints,
+          })),
+          priorPointsAllowed: priors.DEF.mean.pointsAllowed,
+          priorTeamPoints: teamKickerPrior.mean.teamPoints,
+          source: root + "stats_team/stats_team_week_" + s.season + ".csv",
+        }
+      : null;
     return {
       ...result,
+      baseline,
+      specialist,
       profile: profiles[p.id] || null,
       researchHistory: (p.position === "DEF" ? teamStats : stats)
         .filter(
@@ -210,7 +323,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 10,
+    version: 11,
     scoring: scoring(s),
     newsSources: newsResearch.sources,
     waiverCandidates: ["QB", "K", "DEF", "RB", "WR", "TE"].flatMap((position) =>
@@ -232,6 +345,6 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     shortlist: shortlist.map((p) => p.id),
     sources,
     method:
-      "Experimental statistical baseline; Qwen explains supplied evidence. No guarantee of wins. Prior-season history is context only.",
+      "League-scored recent and prior-season statistics, shrunk toward positional history. Qwen selects a bounded forecast adjustment using supplied evidence; predictive accuracy is unproven.",
   };
 }

@@ -55,7 +55,8 @@ export type EvaluatedQuote = OddsQuote & {
   value: number | null;
 };
 export type BookComponent = {
-  market: PropMarket;
+  market: string;
+  unit?: string;
   label: string;
   mean: number;
   multiplier: number;
@@ -64,7 +65,16 @@ export type BookComponent = {
 };
 export type SportsbookProjection = {
   points: number | null;
-  partial: true;
+  partial: boolean;
+  model?: {
+    name: string;
+    perBook: any[];
+    historyGames: number;
+    peerGames: number;
+    source: string;
+    formula: string;
+    limitation: string;
+  };
   reason: string | null;
   fetchedAt: string | null;
   nextAt: string | null;

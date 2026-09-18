@@ -1,4 +1,9 @@
 import { number, type SnapshotData } from "./model.ts";
+export const displayTeamName = (name: string) =>
+  ({
+    "ashokkumar's Legit Team": "ashok Legit Team",
+    "Sekou Batchelor's Superb Team": "Sekou Superb Team",
+  })[name] || name;
 export function leagueOverview(s: SnapshotData, owner = false) {
   const p = s.sections.find((x) => x.kind === "league");
   const table = p?.tables.find((t) =>
@@ -10,7 +15,9 @@ export function leagueOverview(s: SnapshotData, owner = false) {
     const own = link.url.endsWith("/" + s.team.id);
     return [
       {
-        name: own ? s.team.name : link.text.split("\n")[0].trim(),
+        name: displayTeamName(
+          own ? s.team.name : link.text.split("\n")[0].trim(),
+        ),
         own,
         record: r.cells[2],
         pointsFor: number(r.cells[3]),
@@ -30,7 +37,7 @@ export function leagueOverview(s: SnapshotData, owner = false) {
     standings,
     matchup: live
       ? {
-          opponentName:
+          opponentName: displayTeamName(
             m?.tables
               .flatMap((t) => t.rows)
               .flatMap((r) => r.links)
@@ -41,8 +48,9 @@ export function leagueOverview(s: SnapshotData, owner = false) {
               )
               ?.text.split("\n")[0]
               .trim() ||
-            standings.find((r) => !r.own && text.includes(r.name))?.name ||
-            "Opponent",
+              standings.find((r) => !r.own && text.includes(r.name))?.name ||
+              "Opponent",
+          ),
           ownActual: number(scores?.[1]),
           opponentActual: number(scores?.[2]),
           ownProjected: number(live[1]),

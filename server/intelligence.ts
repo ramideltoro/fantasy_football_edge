@@ -57,7 +57,7 @@ export async function installIntelligence(
     "UPDATE intelligence SET status='queued' WHERE status='building'",
   );
   await db.query(
-    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<10",
+    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<11",
   );
   await db.query(
     "ALTER TABLE intelligence ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0",
@@ -205,15 +205,13 @@ export async function installIntelligence(
         .status((await saveProjection(db, q.body)) ? 200 : 409)
         .json({ ok: true });
     } catch (error) {
-      return r
-        .status(400)
-        .json({
-          error: "Invalid projection result",
-          detail:
-            error instanceof Error
-              ? error.message.slice(0, 700)
-              : "Invalid forecast",
-        });
+      return r.status(400).json({
+        error: "Invalid projection result",
+        detail:
+          error instanceof Error
+            ? error.message.slice(0, 700)
+            : "Invalid forecast",
+      });
     }
   });
   app.get("/api/projections", async (_q, r) => {
@@ -226,7 +224,7 @@ export async function installIntelligence(
     const map = await projectionMap(db, latest.season, latest.week);
     const status = (
       await db.query(
-        "SELECT status,count(*)::int FROM projection_jobs WHERE season=$1 AND week=$2 AND data->>'method'='qwen-points-v4' GROUP BY status",
+        "SELECT status,count(*)::int FROM projection_jobs WHERE season=$1 AND week=$2 AND data->>'method'='qwen-points-v5' GROUP BY status",
         [latest.season, latest.week],
       )
     ).rows;

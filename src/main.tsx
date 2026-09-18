@@ -1,4 +1,3 @@
-import "@fontsource/anton/latin-400.css";
 import {
   PlayerProvider,
   PlayerChartTick,
@@ -18,10 +17,6 @@ import {
 } from "./NewsHub";
 import { AnalysisRefresh } from "./AnalysisRefresh";
 import { ProjectionValue, ProjectionDetails } from "./ProjectionValue";
-import "@fontsource/inter/400.css";
-import "@fontsource/inter/500.css";
-import "@fontsource/inter/600.css";
-import "@fontsource/inter/700.css";
 import { AIInsights } from "./AIInsights";
 import { ImportOperations } from "./ImportOperations";
 import { useNflDepth, nflRole } from "./nflRole";
@@ -39,6 +34,7 @@ import {
   LineChart,
   Line,
   Legend,
+  LabelList,
   ScatterChart,
   Scatter,
   ZAxis,
@@ -327,13 +323,22 @@ function Dashboard({
             )}
             {tab === "Overview" && (
               <>
-                <DecisionOverview
-                  dashboard={d}
-                  onPlayer={(id) =>
-                    setSelected(pool.find((p) => p.id === id) || null)
-                  }
-                  onLineup={() => setTab("Recommendations")}
-                />
+                <HealthBoard players={players} />
+                <section className="panel matchup-commentary">
+                  <span className="eyebrow">
+                    WEEK {s.week} · THE LOCKER-ROOM READ
+                  </span>
+                  <h2>Here’s how this week could go.</h2>
+                  {d.matchupCommentary?.map((p: string, i: number) => (
+                    <p key={i}>
+                      <PlayerText text={p} />
+                    </p>
+                  ))}
+                  <small>
+                    Based on current Yahoo matchup totals, your lineup and
+                    imported health flags. Forecasts can change.
+                  </small>
+                </section>
                 <div className="metrics">
                   <Metric
                     label="Points so far"
@@ -371,10 +376,12 @@ function Dashboard({
                 <div className="grid">
                   <Panel
                     title="Who’s carrying the cooler?"
-                    subtitle="Current week · imported Yahoo projections"
+                    subtitle="Current week · Yahoo projections and scored actuals. Unplayed games have no actual score yet."
                   >
                     <ResponsiveContainer width="100%" height={290}>
                       <BarChart
+                        className="cooler-chart"
+                        margin={{ top: 28, right: 12, bottom: 8, left: 0 }}
                         data={starters.map((p) => ({
                           name: p.name,
                           Projected: yahooPoints(p),
@@ -389,15 +396,28 @@ function Dashboard({
                         <Bar
                           isAnimationActive={false}
                           dataKey="Projected"
-                          fill="#f5ad32"
+                          fill="#ffbb38"
+                          legendType="square"
                           radius={[4, 4, 0, 0]}
                         />
                         <Bar
                           isAnimationActive={false}
                           dataKey="Actual"
-                          fill="#6d7488"
+                          fill="#83d5af"
+                          legendType="square"
+                          minPointSize={3}
                           radius={[4, 4, 0, 0]}
-                        />
+                        >
+                          <LabelList
+                            dataKey="Actual"
+                            position="top"
+                            fill="#83d5af"
+                            fontSize={11}
+                            formatter={(v: any) =>
+                              v == null ? "" : Number(v).toFixed(2)
+                            }
+                          />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </Panel>
@@ -677,12 +697,32 @@ function Dashboard({
                         <a href={section.url} target="_blank" rel="noreferrer">
                           Open in Yahoo <ArrowUpRight size={14} />
                         </a>
-                        <pre>{section.text}</pre>
+                        <pre>
+                          {section.text
+                            .replaceAll(
+                              "ashokkumar's Legit Team",
+                              "ashok Legit Team",
+                            )
+                            .replaceAll(
+                              "Sekou Batchelor's Superb Team",
+                              "Sekou Superb Team",
+                            )}
+                        </pre>
                       </details>
                     ))}
                 </>
               ))}
-            {tab === "News & trends" && <HealthBoard players={players} />}
+            {tab === "News & trends" && (
+              <>
+                <DecisionOverview
+                  dashboard={d}
+                  onPlayer={(id) =>
+                    setSelected(pool.find((p) => p.id === id) || null)
+                  }
+                  onLineup={() => setTab("Recommendations")}
+                />
+              </>
+            )}
             {tab === "News & trends" && (
               <NewsHub
                 onPlayer={(id) =>

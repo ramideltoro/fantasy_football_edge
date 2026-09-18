@@ -1,3 +1,7 @@
+import { matchupCommentary } from "../shared/matchupCommentary.ts";
+import { specialistBooks } from "../shared/specialistBooks.ts";
+import { scoring } from "../shared/playerForecast.ts";
+import { actualPoints } from "../shared/leagueScoring.ts";
 import { installSportsbook } from "./sportsbookService.ts";
 import { sportsbookProjection } from "../shared/sportsbook.ts";
 import { publicJsonCache } from "./publicCache.ts";
@@ -395,6 +399,7 @@ app.get("/api/dashboard", async (q, r) => {
       [raw.season, raw.week],
     )
   ).rows[0]?.data;
+  const rules = scoring(raw);
   const odds = await sportsbookService.state();
   const depth = await depthCharts().catch(() => null);
   const teamAliases: Record<string, string> = {
@@ -407,6 +412,8 @@ app.get("/api/dashboard", async (q, r) => {
     const research = intelligence?.players?.find(
       (r: any) => r.id === p.id && r.team === p.team,
     );
+    p.sportsbook = specialistBooks(p, research, rules, p.sportsbook!);
+    p.actual = actualPoints(p, rules).points;
     p.profile = research?.profile || null;
     p.research = research
       ? {
@@ -472,6 +479,7 @@ app.get("/api/dashboard", async (q, r) => {
     advice: advice(s),
     history,
     league: leagueOverview(s, privateView),
+    matchupCommentary: matchupCommentary(s),
     accuracy: accuracy(historicalRows.map((x) => x.data)),
     calibrated: calibratedForecast(
       raw.players,

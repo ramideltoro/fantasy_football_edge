@@ -1,8 +1,9 @@
 import {
   qwenPointsMethod,
+  forecastOptions,
   projectionRequest,
   validateQwenPoints,
-} from "../shared/qwenPoints.ts";
+} from "../shared/qwenCalibrated.ts";
 import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import { z } from "zod";
@@ -17,16 +18,23 @@ export async function initProjections(db: Pool) {
 export async function enqueueProjections(db: Pool, id: string, d: any) {
   const players = [...d.players].sort(
     (a: any, b: any) =>
-      Number(!a.slot) - Number(!b.slot) || a.id.localeCompare(b.id),
+      Number(!a.slot && !["K", "DEF"].includes(a.position)) -
+        Number(!b.slot && !["K", "DEF"].includes(b.position)) ||
+      Number(!!a.locked) - Number(!!b.locked) ||
+      a.id.localeCompare(b.id),
   );
   const market = (
     await db.query("SELECT data->'market' AS market FROM news_state WHERE id=1")
   ).rows[0]?.market;
-  for (let i = 0; i < players.length; i += 3) {
-    const batch = players.slice(i, i + 3);
+  for (let i = 0; i < players.length; i += 6) {
+    const batch = players.slice(i, i + 6);
     const input = {
-      method: "qwen-points-v4",
-      priority: batch.some((p: any) => p.slot) ? 0 : 1,
+      method: "qwen-points-v5",
+      priority: batch.some(
+        (p: any) => p.slot || ["K", "DEF"].includes(p.position),
+      )
+        ? 0
+        : 1,
       season: d.season,
       week: d.week,
       scoring: d.scoring,
@@ -42,6 +50,7 @@ export async function enqueueProjections(db: Pool, id: string, d: any) {
         kickoffAt: p.kickoffAt,
         locked: p.locked,
         history: p.researchHistory,
+        baseline: p.baseline,
         fantasyHistory: p.history,
         injuryReports: p.profile?.injuries || [],
         news: p.headlines.slice(0, 3).map((n: any) => ({
@@ -80,13 +89,14 @@ export async function enqueueProjections(db: Pool, id: string, d: any) {
             p.bye,
             p.nflRole,
             p.news.map((n: any) => [n.url, n.publishedAt]),
+            p.baseline?.points,
           ]),
           window: Math.floor(Date.now() / 14400000),
         }),
       )
       .digest("hex");
     await db.query(
-      "UPDATE projection_jobs SET status='superseded' WHERE status='ready' AND season=$1 AND week=$2 AND hash<>$3 AND data->>'method'='qwen-points-v4' AND data->'players'->0->>'id'=$4",
+      "UPDATE projection_jobs SET status='superseded' WHERE status='ready' AND season=$1 AND week=$2 AND hash<>$3 AND data->>'method'='qwen-points-v5' AND data->'players'->0->>'id'=$4",
       [d.season, d.week, hash, input.players[0].id],
     );
     await db.query(
@@ -95,14 +105,14 @@ export async function enqueueProjections(db: Pool, id: string, d: any) {
     );
   }
   await db.query(
-    "UPDATE projection_jobs SET status='superseded' WHERE status='ready' AND (data->>'method'<>'qwen-points-v4' OR season<>$1 OR week<>$2 OR created_at<now()-interval '8 hours')",
+    "UPDATE projection_jobs SET status='superseded' WHERE status='ready' AND (data->>'method'<>'qwen-points-v5' OR season<>$1 OR week<>$2 OR created_at<now()-interval '8 hours')",
     [d.season, d.week],
   );
 }
 export async function claimProjection(db: Pool, rosterOnly = false) {
   const row = (
     await db.query(
-      "UPDATE projection_jobs SET status='analyzing',claimed_at=now(),attempts=attempts+1 WHERE id=(SELECT id FROM projection_jobs WHERE data->>'method'='qwen-points-v4' AND (NOT $1::boolean OR data->>'priority'='0') AND attempts<3 AND (status='ready' OR (status IN ('analyzing','failed') AND claimed_at<now()-interval '10 minutes')) ORDER BY (data->>'priority')::int ASC, created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id,data",
+      "UPDATE projection_jobs SET status='analyzing',claimed_at=now(),attempts=attempts+1 WHERE id=(SELECT id FROM projection_jobs WHERE data->>'method'='qwen-points-v5' AND (NOT $1::boolean OR data->>'priority'='0') AND attempts<3 AND (status='ready' OR (status IN ('analyzing','failed') AND claimed_at<now()-interval '10 minutes')) ORDER BY (data->>'priority')::int ASC, created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id,data",
       [rosterOnly],
     )
   ).rows[0];
@@ -200,7 +210,7 @@ export async function saveProjection(db: Pool, body: any) {
 export async function projectionMap(db: Pool, season: number, week: number) {
   const rows = (
     await db.query(
-      "SELECT data,result,completed_at FROM projection_jobs WHERE data->>'method'='qwen-points-v4' AND season=$1 AND week=$2 AND status='complete' AND completed_at>now()-interval '24 hours' ORDER BY created_at ASC",
+      "SELECT data,result,completed_at FROM projection_jobs WHERE data->>'method'='qwen-points-v5' AND season=$1 AND week=$2 AND status='complete' AND completed_at>now()-interval '24 hours' ORDER BY created_at ASC",
       [season, week],
     )
   ).rows;
@@ -208,6 +218,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
   for (const row of rows)
     for (const f of row.result) {
       const p = row.data.players.find((p: any) => p.id === f.id);
+      if (!p || !forecastOptions(p, row.data.week).includes(f.points)) continue;
       map.set(f.id, {
         ...f,
         reason: f.reason,
@@ -225,7 +236,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
           publishedAt: n.publishedAt,
         })),
         method:
-          "Qwen2.5 calculates points and availability estimates from supplied player history, league scoring, ESPN roles, reporting and available game lines. Yahoo projections are excluded.",
+          "Qwen selects a bounded, league-scored forecast from historical stat baselines and supplied role, health, reporting and game context. Yahoo projections are excluded.",
       });
     }
   return map;
@@ -233,7 +244,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
 export async function projectionAccuracy(db: Pool) {
   const jobs = (
     await db.query(
-      "SELECT j.data,j.result,j.completed_at,s.data - 'sections' AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' AND j.data->>'method'='qwen-points-v4' ORDER BY j.completed_at ASC LIMIT 1000",
+      "SELECT j.data,j.result,j.completed_at,s.data - 'sections' AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' AND j.data->>'method'='qwen-points-v5' ORDER BY j.completed_at ASC LIMIT 1000",
     )
   ).rows;
   const predictions = new Map<string, any>();
