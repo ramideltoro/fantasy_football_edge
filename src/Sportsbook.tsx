@@ -116,7 +116,11 @@ function SportsbookDialog({
       ref={ref}
       className="player-dialog sportsbook-dialog"
       aria-labelledby="sportsbook-title"
-      onCancel={close}
+      onCancel={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      }}
       onClick={(e) => {
         if (e.target === ref.current) close();
       }}

@@ -68,7 +68,11 @@ function QwenDialog({
       ref={ref}
       className="player-dialog qwen-dialog"
       aria-labelledby="qwen-dialog-title"
-      onCancel={close}
+      onCancel={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      }}
       onClick={(e) => {
         if (e.target === ref.current) close();
       }}
