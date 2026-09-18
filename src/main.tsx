@@ -1,3 +1,6 @@
+import { recordSortValue } from "../shared/tableSort";
+import { LineupRecommendations } from "./LineupRecommendations";
+import { SortableTable } from "./SortableTable";
 import {
   PlayerProvider,
   PlayerChartTick,
@@ -459,83 +462,7 @@ function Dashboard({
             )}
             {tab === "Recommendations" && (
               <>
-                <Panel title="Put your heavy hitters in." subtitle={a.method}>
-                  {changes.map((change: any, i: number) => (
-                    <div className="watch" key={i}>
-                      <span className="player-icon">{change.slot}</span>
-                      <div>
-                        <PlayerLink id={change.playerId} />
-                        <p>
-                          Move from{" "}
-                          {
-                            players.find(
-                              (p: PlayerData) => p.id === change.playerId,
-                            )?.slot
-                          }{" "}
-                          to {change.slot}; replaces{" "}
-                          <PlayerLink id={change.currentPlayerId} /> (
-                          {fmt(
-                            players.find(
-                              (p: PlayerData) =>
-                                p.id === change.currentPlayerId,
-                            )?.projected,
-                          )}{" "}
-                          points) with{" "}
-                          {fmt(
-                            players.find(
-                              (p: PlayerData) => p.id === change.playerId,
-                            )?.projected,
-                          )}{" "}
-                          points.
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  <p className="notice">
-                    Review current injury news and kickoff times before making
-                    changes in Yahoo. Locked players stay in place.
-                  </p>
-                  {!a.complete ? (
-                    <p className="empty">
-                      A complete eligible lineup cannot be calculated from the
-                      available projections.
-                    </p>
-                  ) : (
-                    <>
-                      <div className="lineup">
-                        {a.lineup.map((x: any, i: number) => (
-                          <button
-                            key={i}
-                            onClick={() =>
-                              setSelected(
-                                pool.find((p) => p.id === x.playerId)!,
-                              )
-                            }
-                          >
-                            <em>{x.slot}</em>
-                            <b>{name(x.playerId)}</b>
-                            <span>
-                              {x.locked ? (
-                                <Lock size={15} />
-                              ) : (
-                                fmt(
-                                  pool.find((p) => p.id === x.playerId)
-                                    ?.projected,
-                                )
-                              )}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                      <p className="muted">
-                        Projected improvement: {fmt(a.delta)} points. This is
-                        the combined gain from all listed moves, not a
-                        guarantee. Apply the complete set in Yahoo before
-                        kickoff; slot reassignments can depend on each other.
-                      </p>
-                    </>
-                  )}
-                </Panel>
+                <LineupRecommendations snapshot={s} />
                 <Panel
                   title="Waiver shortlist"
                   subtitle="Up to three quarterbacks, then the best of the rest. We’re building a roster, not a QB convention."
@@ -649,7 +576,7 @@ function Dashboard({
                   }
                 >
                   <div className="table-wrap">
-                    <table>
+                    <SortableTable>
                       <thead>
                         <tr>
                           <th>Team</th>
@@ -663,14 +590,16 @@ function Dashboard({
                         {d.league?.standings.map((r: any, i: number) => (
                           <tr key={i}>
                             <td className={r.own ? "amber" : ""}>{r.name}</td>
-                            <td>{r.record}</td>
+                            <td data-sort-value={recordSortValue(r.record)}>
+                              {r.record}
+                            </td>
                             <td>{fmt(r.pointsFor)}</td>
                             <td>{fmt(r.pointsAgainst)}</td>
                             <td>{r.waiver ?? "—"}</td>
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </SortableTable>
                   </div>
                 </Panel>
               </>
@@ -801,7 +730,7 @@ function Dashboard({
                   subtitle="Which page groups completed in the latest import"
                 >
                   <div className="table-wrap">
-                    <table>
+                    <SortableTable>
                       <thead>
                         <tr>
                           <th>Page group</th>
@@ -820,7 +749,7 @@ function Dashboard({
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </SortableTable>
                   </div>
                 </Panel>
                 {d.owner && (

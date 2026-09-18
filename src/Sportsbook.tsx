@@ -1,3 +1,4 @@
+import { SortableTable } from "./SortableTable";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Coins, X } from "lucide-react";
@@ -192,7 +193,7 @@ export function SportsbookDetails({
       </p>
       {s.components.length > 0 && (
         <div className="table-wrap sportsbook-calculation">
-          <table>
+          <SortableTable>
             <caption>
               {s.points == null
                 ? "Previous / reference calculation — not an active prediction"
@@ -209,22 +210,22 @@ export function SportsbookDetails({
             <tbody>
               {s.components.map((c) => (
                 <tr key={c.market}>
-                  <td>
+                  <td data-sort-value={c.label}>
                     {c.label}
                     <small>{c.books.length} books</small>
                   </td>
-                  <td>
+                  <td data-sort-value={c.mean}>
                     {number(c.mean)}
                     <small>
                       {c.market === "touchdowns" ? "estimated TDs" : "yards"}
                     </small>
                   </td>
-                  <td>× {c.multiplier}</td>
+                  <td data-sort-value={c.multiplier}>× {c.multiplier}</td>
                   <td>{number(c.points)}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       )}
       <details className="sportsbook-method">
@@ -262,7 +263,7 @@ export function SportsbookDetails({
         <summary>Every player quote · {s.quotes.length} receipts</summary>
         {s.quotes.length ? (
           <div className="table-wrap">
-            <table>
+            <SortableTable>
               <thead>
                 <tr>
                   <th>Book / operator</th>
@@ -277,12 +278,14 @@ export function SportsbookDetails({
                     key={`${q.book}-${q.market}`}
                     className={q.exclusion ? "quote-excluded" : ""}
                   >
-                    <td>
+                    <td data-sort-value={q.book}>
                       {q.book}
                       {q.kind === "pickem" && <small>Pick’em</small>}
                     </td>
                     <td>{MARKET_LABELS[q.market]}</td>
-                    <td className="odds-raw">{q.raw}</td>
+                    <td className="odds-raw" data-sort-value={q.line ?? q.odds}>
+                      {q.raw}
+                    </td>
                     <td>
                       {q.used
                         ? s.points == null
@@ -293,7 +296,7 @@ export function SportsbookDetails({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <p>No player quotes listed.</p>
@@ -309,7 +312,7 @@ export function SportsbookDetails({
           converted into player fantasy points.
         </p>
         <div className="table-wrap">
-          <table>
+          <SortableTable>
             <thead>
               <tr>
                 <th>Book</th>
@@ -320,18 +323,20 @@ export function SportsbookDetails({
             <tbody>
               {s.games.map((g) => (
                 <tr key={`${g.eventId}-${g.book}-${g.market}`}>
-                  <td>
+                  <td data-sort-value={g.book}>
                     {g.book}
                     {g.kind === "reference" && (
                       <small>Reference, not a book</small>
                     )}
                   </td>
                   <td>{g.market}</td>
-                  <td className="odds-raw">{g.raw}</td>
+                  <td className="odds-raw" data-sort-value={g.line ?? g.odds}>
+                    {g.raw}
+                  </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       </details>
       <div className="sportsbook-sources">
@@ -385,7 +390,7 @@ function SpecialistBookDetails({
         tabIndex={0}
         aria-label="Sportsbook specialist calculation"
       >
-        <table>
+        <SortableTable>
           <thead>
             <tr>
               <th>Book</th>
@@ -401,17 +406,17 @@ function SpecialistBookDetails({
                 <td>{b.book}</td>
                 <td>{number(b.total)}</td>
                 <td>{number(b.spread)}</td>
-                <td>
+                <td data-sort-value={b.impliedOwn}>
                   {number(b.impliedOwn)} / {number(b.impliedOpponent)}
                 </td>
                 <td>{number(b.points)}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       <div className="table-wrap">
-        <table>
+        <SortableTable>
           <caption>Consensus contribution</caption>
           <thead>
             <tr>
@@ -425,7 +430,7 @@ function SpecialistBookDetails({
             {s.components.map((c) => (
               <tr key={c.market}>
                 <td>{c.label}</td>
-                <td>
+                <td data-sort-value={c.mean}>
                   {number(c.mean)}
                   <small>{c.unit}</small>
                 </td>
@@ -434,7 +439,7 @@ function SpecialistBookDetails({
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       <details className="sportsbook-receipts">
         <summary>All posted game odds · {s.games.length} receipts</summary>
@@ -443,7 +448,7 @@ function SpecialistBookDetails({
           are shown for context.
         </p>
         <div className="table-wrap">
-          <table>
+          <SortableTable>
             <thead>
               <tr>
                 <th>Book / source</th>
@@ -454,18 +459,20 @@ function SpecialistBookDetails({
             <tbody>
               {s.games.map((g) => (
                 <tr key={`${g.eventId}-${g.book}-${g.market}`}>
-                  <td>
+                  <td data-sort-value={g.book}>
                     {g.book}
                     {g.kind === "reference" && (
                       <small>Reference, not a book</small>
                     )}
                   </td>
                   <td>{g.market}</td>
-                  <td className="odds-raw">{g.raw}</td>
+                  <td className="odds-raw" data-sort-value={g.line ?? g.odds}>
+                    {g.raw}
+                  </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       </details>
       <div className="sportsbook-sources">

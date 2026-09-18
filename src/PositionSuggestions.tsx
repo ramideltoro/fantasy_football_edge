@@ -1,3 +1,4 @@
+import { SortableTable } from "./SortableTable";
 import {
   PlayerLink,
   PlayerText,
@@ -161,7 +162,7 @@ export function PositionSuggestions({
                         : "unknown freshness"}
                     </small>
                     <div className="table-wrap">
-                      <table>
+                      <SortableTable>
                         <thead>
                           <tr>
                             <th>Player</th>
@@ -189,7 +190,7 @@ export function PositionSuggestions({
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                      </SortableTable>
                     </div>
                   </details>
                 </>

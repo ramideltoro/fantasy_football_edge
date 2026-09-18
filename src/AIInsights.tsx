@@ -1,3 +1,4 @@
+import { SortableTable } from "./SortableTable";
 import { PlayerLink, PlayerText, usePlayers } from "./PlayerExperience";
 import { ProjectionStatus } from "./ProjectionStatus";
 import { TeamBrief } from "./TeamBrief";
@@ -140,7 +141,7 @@ export function AIInsights({ owner }: { owner: boolean }) {
               />
             </label>
             <div className="table-wrap">
-              <table>
+              <SortableTable>
                 <thead>
                   <tr>
                     <th>Player</th>
@@ -192,7 +193,7 @@ export function AIInsights({ owner }: { owner: boolean }) {
                       </tr>
                     ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
           </section>
           {p && (

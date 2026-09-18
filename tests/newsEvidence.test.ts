@@ -95,7 +95,8 @@ test("events require substantive excerpts and preserve source uncertainty", () =
     })[0].id,
   );
 });
-test("AI must cite this player’s event and exact supporting text; opinions and locks cannot change lineup", () => {
+test("AI must cite this player’s event and exact supporting text; opinions and locks cannot change lineup", (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now });
   const events = eventsFor(player, article);
   const input = { players: [{ ...player, events }] };
   const result = {

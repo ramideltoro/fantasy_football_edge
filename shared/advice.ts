@@ -24,7 +24,8 @@ export function advice(
   const stale = Date.now() - Date.parse(s.capturedAt) > 2 * 3600000;
   const starters = s.players.filter((p) => !reserve.has(p.slot));
   const locked = starters.filter((p) => p.locked);
-  const slots = starters.filter((p) => !p.locked).map((p) => p.slot);
+  const movable = starters.filter((p) => !p.locked);
+  const slots = movable.map((p) => p.slot);
   const pool = s.players.filter(
     (p) =>
       p.bye !== s.week &&
@@ -34,29 +35,51 @@ export function advice(
       p.projected !== null,
   );
   let best = -Infinity,
+    bestMoves = Infinity,
     bestPlayers: PlayerData[] = [];
-  const memo = new Map<string, number>();
-  function search(i: number, used: bigint, total: number, picks: PlayerData[]) {
+  const epsilon = 1e-9;
+  const memo = new Map<string, { total: number; moves: number }>();
+  function search(
+    i: number,
+    used: bigint,
+    total: number,
+    picks: PlayerData[],
+    moves: number,
+  ) {
     if (i === slots.length) {
-      if (total > best) {
+      if (
+        total > best + epsilon ||
+        (Math.abs(total - best) <= epsilon && moves < bestMoves)
+      ) {
         best = total;
+        bestMoves = moves;
         bestPlayers = [...picks];
       }
       return;
     }
     const k = i + ":" + used;
-    if ((memo.get(k) ?? -Infinity) >= total) return;
-    memo.set(k, total);
+    const previous = memo.get(k);
+    if (
+      previous &&
+      (previous.total > total + epsilon ||
+        (Math.abs(previous.total - total) <= epsilon &&
+          previous.moves <= moves))
+    )
+      return;
+    memo.set(k, { total, moves });
     for (let j = 0; j < pool.length; j++) {
       const bit = 1n << BigInt(j);
       if (!(used & bit) && fits(pool[j], slots[i]))
-        search(i + 1, used | bit, total + pool[j].projected!, [
-          ...picks,
-          pool[j],
-        ]);
+        search(
+          i + 1,
+          used | bit,
+          total + pool[j].projected!,
+          [...picks, pool[j]],
+          moves + Number(pool[j].id !== movable[i].id),
+        );
     }
   }
-  search(0, 0n, 0, []);
+  search(0, 0n, 0, [], 0);
   const complete = best !== -Infinity;
   const current = starters
     .filter((p) => !p.locked)
@@ -99,7 +122,7 @@ export function advice(
           .map((p, i) => ({
             slot: slots[i],
             playerId: p.id,
-            currentPlayerId: starters.filter((x) => !x.locked)[i]?.id,
+            currentPlayerId: movable[i]?.id,
           }))
           .filter((x) => x.playerId !== x.currentPlayerId)
       : [],

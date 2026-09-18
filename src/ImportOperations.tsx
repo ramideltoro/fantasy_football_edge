@@ -1,3 +1,4 @@
+import { SortableTable } from "./SortableTable";
 import { useEffect, useState } from "react";
 export function ImportOperations({ owner }: { owner: boolean }) {
   const [data, setData] = useState<any>(null),
@@ -100,7 +101,7 @@ export function ImportOperations({ owner }: { owner: boolean }) {
       )}
       <h3>Operation logs</h3>
       <div className="table-wrap">
-        <table>
+        <SortableTable>
           <thead>
             <tr>
               <th>Time</th>
@@ -111,13 +112,15 @@ export function ImportOperations({ owner }: { owner: boolean }) {
           <tbody>
             {(data?.logs || []).map((log: any) => (
               <tr key={log.id}>
-                <td>{new Date(log.created_at).toLocaleString()}</td>
+                <td data-sort-value={Date.parse(log.created_at)}>
+                  {new Date(log.created_at).toLocaleString()}
+                </td>
                 <td>{log.status}</td>
                 <td>{log.message}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       {data && !data.logs.length && <p>No operations recorded yet.</p>}
     </section>

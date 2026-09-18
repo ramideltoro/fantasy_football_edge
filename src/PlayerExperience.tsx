@@ -1,3 +1,4 @@
+import { SortableTable } from "./SortableTable";
 import { QwenValue, QwenDetails } from "./QwenExplanation";
 import {
   SportsbookButton,
@@ -305,7 +306,7 @@ export function PlayerTable({
         tabIndex={0}
         aria-label={`${title} player table; scroll horizontally for all columns`}
       >
-        <table>
+        <SortableTable pageSize={30} page={page} onPageChange={setPage}>
           <thead>
             <tr>
               <th>Compare</th>
@@ -329,12 +330,15 @@ export function PlayerTable({
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(page * 30, (page + 1) * 30).map((p) => (
+            {filtered.map((p) => (
               <tr
                 key={p.id}
                 className={checked.includes(p.id) ? "selected-row" : ""}
               >
-                <td data-label="Compare">
+                <td
+                  data-label="Compare"
+                  data-sort-value={Number(checked.includes(p.id))}
+                >
                   <input
                     type="checkbox"
                     aria-label={`Compare ${p.name}`}
@@ -348,7 +352,14 @@ export function PlayerTable({
                     }
                   />
                 </td>
-                <td data-label="NFL role">
+                <td
+                  data-label="NFL role"
+                  data-sort-value={
+                    ["O", "IR", "PUP", "SUSP"].includes(p.status)
+                      ? "Unavailable"
+                      : p.nflRole?.label || "Checking role"
+                  }
+                >
                   <button
                     className="role-button"
                     onClick={() => open([p.id])}
@@ -361,6 +372,11 @@ export function PlayerTable({
                   <td
                     className="point-cell"
                     data-label="Qwen probability start"
+                    data-sort-value={
+                      p.position === "DEF"
+                        ? null
+                        : (currentQwen(p)?.startProbability ?? null)
+                    }
                   >
                     <QwenValue player={p} kind="start" />
                   </td>
@@ -373,7 +389,7 @@ export function PlayerTable({
                     </span>
                   </td>
                 )}
-                <td data-label="Player">
+                <td data-label="Player" data-sort-value={p.name}>
                   <button className="player-cell" onClick={() => open([p.id])}>
                     <Portrait player={p} />
                     <span>
@@ -397,23 +413,32 @@ export function PlayerTable({
                 <td
                   className="point-cell qwen-number"
                   data-label="Qwen projected"
+                  data-sort-value={currentQwen(p)?.points ?? null}
                 >
                   <QwenValue player={p} />
                 </td>
                 <td
                   className="point-cell sportsbook-cell"
                   data-label="Bookies projected"
+                  data-sort-value={p.sportsbook?.points ?? null}
                 >
                   <SportsbookButton player={p} />
                 </td>
                 <td data-label="Rostered">{pct(p.rosterPct)}</td>
-                <td data-label="Started this NFL season">
+                <td
+                  data-label="Started this NFL season"
+                  data-sort-value={
+                    p.position === "DEF"
+                      ? null
+                      : (p.profile?.starts?.percent ?? null)
+                  }
+                >
                   <Started player={p} />
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       {!filtered.length && (
         <p className="empty">Nobody here yet. Try another position.</p>
@@ -774,7 +799,7 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
         <summary>Recent game history</summary>
         {p.research?.history?.length ? (
           <div className="table-wrap">
-            <table>
+            <SortableTable>
               <thead>
                 <tr>
                   <th>Season / week</th>
@@ -787,7 +812,7 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
               <tbody>
                 {p.research.history.map((h: any) => (
                   <tr key={`${h.season}-${h.week}`}>
-                    <td>
+                    <td data-sort-value={h.season * 100 + h.week}>
                       {h.season} / {h.week}
                     </td>
                     <td>{points(h.points)}</td>
@@ -797,7 +822,7 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <p>Verified game history is not available yet.</p>
@@ -811,7 +836,7 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
           <p>Loading history…</p>
         ) : (
           <div className="table-wrap">
-            <table>
+            <SortableTable>
               <thead>
                 <tr>
                   <th>Imported</th>
@@ -823,14 +848,16 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
               <tbody>
                 {history.slice(-12).map((h: any, i: number) => (
                   <tr key={i}>
-                    <td>{new Date(h.capturedAt).toLocaleString()}</td>
+                    <td data-sort-value={Date.parse(h.capturedAt)}>
+                      {new Date(h.capturedAt).toLocaleString()}
+                    </td>
                     <td>{h.week}</td>
                     <td>{points(h.projected)}</td>
                     <td>{points(h.actual)}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         )}
       </details>

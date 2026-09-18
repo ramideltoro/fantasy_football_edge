@@ -1,3 +1,4 @@
+import { SortableTable } from "./SortableTable";
 import { PlayerLink, PlayerText } from "./PlayerExperience";
 import { useEffect, useState } from "react";
 import {
@@ -285,7 +286,7 @@ export function NewsOperations({ owner }: { owner: boolean }) {
         {n?.runs?.length || 0} recent AI batches complete
       </p>
       <div className="table-wrap">
-        <table>
+        <SortableTable>
           <thead>
             <tr>
               <th>Source</th>
@@ -299,12 +300,20 @@ export function NewsOperations({ owner }: { owner: boolean }) {
               <tr key={s.source}>
                 <td>{s.source}</td>
                 <td>{s.status}</td>
-                <td>{date(s.updated_at)}</td>
-                <td>{date(s.next_at)}</td>
+                <td
+                  data-sort-value={
+                    s.updated_at ? Date.parse(s.updated_at) : null
+                  }
+                >
+                  {date(s.updated_at)}
+                </td>
+                <td data-sort-value={s.next_at ? Date.parse(s.next_at) : null}>
+                  {date(s.next_at)}
+                </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       <details>
         <summary>AI batch history</summary>

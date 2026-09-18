@@ -1,3 +1,4 @@
+import { SortableTable } from "./SortableTable";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Zap } from "lucide-react";
@@ -31,15 +32,11 @@ export function QwenValue({
         aria-label={`Why Qwen ${kind === "start" ? "start probability" : "projected points"} for ${p.name}`}
       >
         <strong>{value}</strong>
-        <small>
-          {q
-            ? value === "—"
-              ? "See coverage"
-              : "Why this number?"
-            : p.locked
-              ? "Game locked"
-              : "Recalculating"}
-        </small>
+        {(value === "—" || value === "N/A") && (
+          <small>
+            {q ? "See coverage" : p.locked ? "Game locked" : "Recalculating"}
+          </small>
+        )}
       </button>
       {open && (
         <QwenDialog player={p} kind={kind} close={() => setOpen(false)} />
@@ -203,7 +200,7 @@ export function QwenDetails({
                 tabIndex={0}
                 aria-label="Qwen league scoring calculation"
               >
-                <table>
+                <SortableTable>
                   <thead>
                     <tr>
                       <th>Scoring category</th>
@@ -224,7 +221,7 @@ export function QwenDetails({
                         </tr>
                       ))}
                   </tbody>
-                </table>
+                </SortableTable>
               </div>
               <p>
                 {c.method} The baseline is scored from expected statistics
