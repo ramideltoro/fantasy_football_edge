@@ -183,12 +183,50 @@ test("complete API snapshot preserves roster IDs, league scoring and bounded pla
         return { league: { transactions: {} } };
       if (path.endsWith("/draftresults"))
         return { league: { draft_results: {} } };
-      if (path.endsWith("/matchups")) return { team: { matchups: {} } };
+      if (path.endsWith("/matchups"))
+        return {
+          team: {
+            matchups: {
+              matchup: [
+                {
+                  week: "1",
+                  status: "postevent",
+                  teams: {
+                    team: [
+                      { ...team, team_points: { total: "0" } },
+                      {
+                        team_key: "461.l.12.t.4",
+                        team_points: { total: "-2" },
+                      },
+                    ],
+                  },
+                },
+                {
+                  week: "2",
+                  status: "midevent",
+                  teams: {
+                    team: [
+                      { ...team, team_points: { total: "12" } },
+                      {
+                        team_key: "461.l.12.t.4",
+                        team_points: { total: "10" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        };
       throw Error("Unexpected fixture route");
     },
     "461.l.12",
     "3",
   );
+  assert.equal(s.leagueRosters?.[0].schedule[0].completed, true);
+  assert.equal(s.leagueRosters?.[0].schedule[0].ownPoints, 0);
+  assert.equal(s.leagueRosters?.[0].schedule[0].opponentPoints, -2);
+  assert.equal(s.leagueRosters?.[0].schedule[1].completed, false);
   assert.equal(s.source, "yahoo-api");
   assert.equal(s.team.id, "3");
   assert.equal(s.league.id, "12");

@@ -1,3 +1,5 @@
+import type { LockerRoomRead } from "../shared/lockerRoomRead";
+import { CoachRead } from "./CoachRead";
 import { ChevronRight } from "lucide-react";
 import { HealthBoard, PlayerText } from "./PlayerExperience";
 import type { PlayerData } from "../shared/model";
@@ -20,6 +22,7 @@ export function WeeklyOverview({
   players,
   matchup,
   commentary,
+  coachRead,
   navigate,
 }: {
   teamName: string;
@@ -27,6 +30,7 @@ export function WeeklyOverview({
   players: PlayerData[];
   matchup: WeeklyMatchup | null;
   commentary?: string[];
+  coachRead?: LockerRoomRead;
   navigate: (tab: string) => void;
 }) {
   const margin =
@@ -101,43 +105,47 @@ export function WeeklyOverview({
           </p>
         )}
       </section>
-      <section
-        className="panel matchup-commentary weekly-read"
-        aria-labelledby="weekly-read-title"
-      >
-        <span className="eyebrow">THE LOCKER-ROOM READ</span>
-        <h2 id="weekly-read-title">Here’s how this week could go.</h2>
-        {commentary?.length ? (
-          commentary.map((p, i) => (
-            <p key={i}>
-              <PlayerText text={p} />
+      {coachRead ? (
+        <CoachRead read={coachRead} navigate={navigate} />
+      ) : (
+        <section
+          className="panel matchup-commentary weekly-read"
+          aria-labelledby="weekly-read-title"
+        >
+          <span className="eyebrow">THE LOCKER-ROOM READ</span>
+          <h2 id="weekly-read-title">Here’s how this week could go.</h2>
+          {commentary?.length ? (
+            commentary.map((p, i) => (
+              <p key={i}>
+                <PlayerText text={p} />
+              </p>
+            ))
+          ) : (
+            <p>
+              The weekly read is waiting for matchup and roster data. Check back
+              after the next refresh.
             </p>
-          ))
-        ) : (
-          <p>
-            The weekly read is waiting for matchup and roster data. Check back
-            after the next refresh.
-          </p>
-        )}
-        <small>
-          Based on Yahoo matchup totals, your lineup and imported health flags.
-          Forecasts can change.
-        </small>
-        <div className="overview-next-step">
-          <button
-            className="primary"
-            onClick={() => navigate("Recommendations")}
-          >
-            Set this week’s lineup <ChevronRight size={16} />
-          </button>
-          <button
-            className="text-link"
-            onClick={() => navigate("Kickoff watch")}
-          >
-            Check kickoff flags <ChevronRight size={15} />
-          </button>
-        </div>
-      </section>
+          )}
+          <small>
+            Based on Yahoo matchup totals, your lineup and imported health
+            flags. Forecasts can change.
+          </small>
+          <div className="overview-next-step">
+            <button
+              className="primary"
+              onClick={() => navigate("Recommendations")}
+            >
+              Set this week’s lineup <ChevronRight size={16} />
+            </button>
+            <button
+              className="text-link"
+              onClick={() => navigate("Kickoff watch")}
+            >
+              Check kickoff flags <ChevronRight size={15} />
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -215,11 +215,22 @@ export async function fetchYahooSnapshot(
         (await get(`team/${t.team_key}/matchups`)).team?.matchups?.matchup,
       );
       const schedule = matches.flatMap((m) => {
+        const scheduledTeam = list(m.teams?.team).find(
+          (o) => o.team_key === t.team_key,
+        );
         const opponent = list(m.teams?.team).find(
           (o) => o.team_key !== t.team_key,
         );
         return opponent
-          ? [{ week: Number(m.week), opponent: id(opponent.team_key) }]
+          ? [
+              {
+                week: Number(m.week),
+                opponent: id(opponent.team_key),
+                completed: m.status === "postevent",
+                ownPoints: n(scheduledTeam?.team_points?.total),
+                opponentPoints: n(opponent.team_points?.total),
+              },
+            ]
           : [];
       });
       if (rosterData.length)

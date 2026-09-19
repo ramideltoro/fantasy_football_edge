@@ -351,6 +351,7 @@ function Dashboard({
                 players={players}
                 matchup={d.league?.matchup || null}
                 commentary={d.matchupCommentary}
+                coachRead={d.lockerRoomRead}
                 navigate={setTab}
               />
             )}

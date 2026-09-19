@@ -75,7 +75,15 @@ export const Snapshot = z.object({
         name: z.string(),
         capturedAt: z.iso.datetime(),
         players: z.array(Player),
-        schedule: z.array(z.object({ week: z.number(), opponent: z.string() })),
+        schedule: z.array(
+          z.object({
+            week: z.number(),
+            opponent: z.string(),
+            completed: z.boolean().optional(),
+            ownPoints: z.number().nullable().optional(),
+            opponentPoints: z.number().nullable().optional(),
+          }),
+        ),
       }),
     )
     .optional(),

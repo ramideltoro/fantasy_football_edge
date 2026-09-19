@@ -3,6 +3,7 @@ import { installYahoo } from "./yahooService.ts";
 import { enrichSnapshot } from "./enrichSnapshot.ts";
 import { installGamePlan } from "./gamePlanService.ts";
 import { matchupCommentary } from "../shared/matchupCommentary.ts";
+import { lockerRoomRead } from "../shared/lockerRoomRead.ts";
 import { installSportsbook } from "./sportsbookService.ts";
 import { publicJsonCache } from "./publicCache.ts";
 import { installNews } from "./newsService.ts";
@@ -433,6 +434,7 @@ app.get("/api/dashboard", async (q, r) => {
     history,
     league: leagueOverview(s, privateView),
     matchupCommentary: matchupCommentary(s),
+    lockerRoomRead: lockerRoomRead(s),
     gamePlan,
     accuracy: accuracy(historicalRows.map((x) => x.data)),
     calibrated: calibratedForecast(

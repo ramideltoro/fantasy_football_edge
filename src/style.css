@@ -4475,3 +4475,119 @@ th[aria-sort="descending"] .sort-indicator {
     line-height: 1.6;
   }
 }
+
+/* Coach's briefing: the call up front, the film and receipts one click away. */
+.coach-read {
+  border-top: 3px solid #ffbb38;
+  background:
+    radial-gradient(ellipse at 100% 0, #7b461521, transparent 55%), #191714;
+}
+.coach-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.coach-masthead .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.coach-phase {
+  font-size: 9px;
+  font-weight: 700;
+  color: #eed3a0;
+  border: 1px solid #68502b;
+  border-radius: 30px;
+  padding: 6px 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+.coach-phase.delayed {
+  color: #ffc47d;
+  border-color: #b3762c;
+}
+.coach-read h2 {
+  color: #ffcb72;
+  font-size: clamp(27px, 2.5vw, 36px);
+  line-height: 1.1;
+  margin: 20px 0 14px;
+  max-width: 25ch;
+}
+.coach-read .coach-updated {
+  color: #b7ac9b;
+  font-size: 10px;
+  margin: 0 0 22px;
+}
+.coach-section {
+  margin: 20px 0;
+}
+.coach-section h3 {
+  color: #d6b47a;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+.coach-section p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
+}
+.coach-call {
+  border-left: 3px solid #ffbb38;
+  padding: 14px 16px;
+  background: #ffbb3808;
+}
+.coach-call h3 {
+  color: #ffcf7c;
+}
+.coach-film {
+  border-top: 1px solid #493a26;
+  border-bottom: 1px solid #493a26;
+  padding: 15px 0;
+  margin-top: 20px;
+}
+.coach-read .coach-film > summary {
+  margin: 0;
+  color: #efc681;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.6;
+}
+.coach-film summary > span {
+  display: block;
+  color: #aa9f8f;
+  font-size: 10px;
+  font-weight: 400;
+}
+.coach-read .coach-source {
+  font-size: 10px;
+  line-height: 1.7;
+  color: #b7ac9b;
+  margin: 15px 0 0;
+}
+.coach-film .table-note {
+  font-size: 10px;
+  line-height: 1.7;
+}
+.coach-film > h3 {
+  font-size: 14px;
+  margin-top: 24px;
+}
+.coach-film .table-wrap {
+  max-width: 100%;
+}
+@media (max-width: 600px) {
+  .coach-read h2 {
+    font-size: 29px;
+  }
+  .coach-call {
+    padding: 12px;
+  }
+  .coach-section p {
+    font-size: 13px;
+  }
+}
