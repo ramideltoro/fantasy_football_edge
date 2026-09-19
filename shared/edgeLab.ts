@@ -154,6 +154,10 @@ export function leagueTeams(s: SnapshotData) {
     ];
   });
 }
+const matchupMemo = new WeakMap<
+  Map<string, number>,
+  Map<string, Map<string, number[]>>
+>();
 export function buildPlayerLab(
   p: PlayerData,
   s: SnapshotData,
@@ -229,6 +233,35 @@ export function buildPlayerLab(
   const peers = stats.filter(
     (r) => before(r) && r.season_type === "REG" && r.position === p.position,
   );
+  const cache =
+    matchupMemo.get(allScores) || new Map<string, Map<string, number[]>>();
+  matchupMemo.set(allScores, cache);
+  const matchupKey = [s.season, s.week, p.position].join(":");
+  let residualIndex = cache.get(matchupKey);
+  if (!residualIndex) {
+    residualIndex = new Map();
+    const groups = new Map<string, any[]>();
+    for (const r of peers) {
+      const group = groups.get(r.player_id) || [];
+      group.push(r);
+      groups.set(r.player_id, group);
+    }
+    for (const r of peers) {
+      const score = allScores.get(rowKey(r));
+      const usual = mean(
+        (groups.get(r.player_id) || [])
+          .filter((x) => x.game_id !== r.game_id)
+          .map((x) => allScores.get(rowKey(x)))
+          .filter((v): v is number => v !== undefined),
+      );
+      if (score === undefined || usual === null) continue;
+      const opponent = teamCode(r.opponent_team || "");
+      const values = residualIndex.get(opponent) || [];
+      values.push(score - usual);
+      residualIndex.set(opponent, values);
+    }
+    cache.set(matchupKey, residualIndex);
+  }
   const targetRate = (stat: string) => {
     const relevant = peers.filter((r) => numeric(r.targets)! > 0);
     const denom = relevant.reduce((n, r) => n + Number(r.targets), 0);
@@ -297,22 +330,7 @@ export function buildPlayerLab(
         ? teamCode(game.away_team)
         : teamCode(game.home_team)
       : null;
-    const residuals = opponent
-      ? peers
-          .filter((r) => teamCode(r.opponent_team) === opponent)
-          .flatMap((r) => {
-            const score = allScores.get(rowKey(r));
-            const own = peers.filter(
-              (x) => x.player_id === r.player_id && x.game_id !== r.game_id,
-            );
-            const usual = mean(
-              own
-                .map((x) => allScores.get(rowKey(x)))
-                .filter((x): x is number => x !== undefined),
-            );
-            return score != null && usual !== null ? [score - usual] : [];
-          })
-      : [];
+    const residuals = opponent ? residualIndex.get(opponent) || [] : [];
     const adjustment = residuals.length
       ? round((mean(residuals)! * residuals.length) / (residuals.length + 20))
       : null;

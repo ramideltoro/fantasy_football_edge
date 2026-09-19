@@ -274,3 +274,47 @@ test("explicit empty-slot simulation handles a future bye without fabricating a 
   assert.equal(result.emptySlots, 1);
   assert.equal(result.rows.find((r) => r.key === "0")?.expectedWins, 0);
 });
+test("cached opponent adjustment compares other games and preserves shrinkage", () => {
+  const p = player("a", "WR"),
+    s = snapshot([p]);
+  s.week = 3;
+  const rows = [
+    ["a", 1, "GB", 10],
+    ["a", 2, "MIN", 30],
+    ["b", 1, "GB", 20],
+    ["b", 2, "MIN", 40],
+  ].map(([id, week, opponent, points]) => ({
+    player_id: id,
+    player_display_name: id,
+    position: "WR",
+    season: 2026,
+    week,
+    team: "DET",
+    opponent_team: opponent,
+    season_type: "REG",
+    game_id: "g" + week,
+    points,
+  }));
+  const scores = new Map(
+    rows.map((r) => [`${r.player_id}:2026:${r.week}`, Number(r.points)]),
+  );
+  const games = [
+    {
+      season: 2026,
+      week: 3,
+      game_type: "REG",
+      home_team: "DET",
+      away_team: "GB",
+    },
+  ];
+  assert.equal(
+    buildPlayerLab(p, s, rows, [], games, rules, scores).lab.matchups[0]
+      .adjustment,
+    -1.82,
+  );
+  assert.equal(
+    buildPlayerLab(player("b", "WR"), s, rows, [], games, rules, scores).lab
+      .matchups[0].samples,
+    2,
+  );
+});
