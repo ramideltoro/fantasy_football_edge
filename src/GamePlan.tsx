@@ -180,7 +180,7 @@ export function ActionBrief({
     });
   if (flex.changes.length)
     cards.push({
-      title: "Leave yourself an escape hatch.",
+      title: "Give Sunday less room to screw you.",
       text: "A later starter can move into FLEX without changing who starts. Keep your replacement options open.",
       tab: "Kickoff watch",
       label: "See FLEX moves",
@@ -274,7 +274,7 @@ export function ChangesFeed({
       <div className="section-heading">
         <div>
           <span className="eyebrow">THE CATCH-UP</span>
-          <h3>What changed while I was gone?</h3>
+          <h3>What the hell did I miss?</h3>
           <p>
             {since
               ? `Since ${stamp(since)} · this browser`
@@ -354,7 +354,7 @@ export function KickoffDesk({
         <div className="section-heading">
           <div>
             <span className="eyebrow">THE SUNDAY SEATBELT</span>
-            <h2>Keep a backup warmed up.</h2>
+            <h2>Tape the ankles. Warm up Plan B.</h2>
             <p>Availability, replacements and lock times in one place.</p>
           </div>
           <button onClick={notifications.toggle}>
@@ -389,8 +389,8 @@ export function KickoffDesk({
             <div>
               <h3>No starter flags right now.</h3>
               <p>
-                That’s the report, not a guarantee. Check again before your
-                first kickoff.
+                Good. Keep the damn headset on. That’s the report, not a
+                guarantee; check again before your first kickoff.
               </p>
             </div>
           </div>
@@ -478,7 +478,7 @@ export function KickoffDesk({
       </section>
       <section className="panel flex-desk">
         <span className="eyebrow">KEEP YOUR FLEX FLEXIBLE</span>
-        <h2>Leave yourself an escape hatch.</h2>
+        <h2>Give Sunday less room to screw you.</h2>
         <p>
           Put later games in flexible slots when the same starters still fit.
           This changes your options, not your projected points.
@@ -559,7 +559,10 @@ export function ThreeWeekPlanner({
         <div>
           <span className="eyebrow">GET THERE BEFORE THE GROUP CHAT</span>
           <h2>Next three Sundays.</h2>
-          <p>See the gaps before everyone starts scrambling.</p>
+          <p>
+            Find the bye-week holes now. Future you has enough shit to deal
+            with.
+          </p>
         </div>
         <CalendarDays />
       </div>
@@ -695,7 +698,10 @@ export function ProjectionReportCard({ plan }: { plan: any }) {
         <div>
           <span className="eyebrow">NO HIDING FROM THE BOX SCORE</span>
           <h2>Who’s actually cooking?</h2>
-          <p>Forecasts saved before kickoff. Final results after the game.</p>
+          <p>
+            Everybody’s a genius before kickoff. Here are the saved forecasts
+            and the actual receipts.
+          </p>
         </div>
         <ReceiptText />
       </div>
@@ -861,7 +867,7 @@ export function WeeklyRecap({ plan }: { plan: any }) {
       <div className="section-heading">
         <div>
           <span className="eyebrow">THE MONDAY RECEIPTS</span>
-          <h2>Who brought it. Who owes lunch.</h2>
+          <h2>Game balls. Gut punches. Who owes lunch?</h2>
         </div>
         <label>
           Week
@@ -964,7 +970,7 @@ export function WeeklyRecap({ plan }: { plan: any }) {
               </p>
             </article>
           </div>
-          <h3>Judge the call with what we knew then.</h3>
+          <h3>Bad bounce or bad call? Watch the damn film.</h3>
           <p>
             A better bench result alone doesn’t make the decision bad. These
             checks compare the last recorded pregame Yahoo projections and legal

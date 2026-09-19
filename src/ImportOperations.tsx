@@ -33,7 +33,10 @@ export function ImportOperations({ owner }: { owner: boolean }) {
     return (
       <section className="panel">
         <h3>Yahoo refresh</h3>
-        <p>Sign in as the owner to refresh Yahoo data and view worker logs.</p>
+        <p>
+          Keys to the film room: sign in as the owner to refresh Yahoo data and
+          view worker logs.
+        </p>
         <a href="/auth/google">Owner sign in</a>
       </section>
     );

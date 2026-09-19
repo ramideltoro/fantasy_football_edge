@@ -46,7 +46,10 @@ export function LineupRecommendations({
       <div className="panel-head">
         <div>
           <h3>Put your heavy hitters in.</h3>
-          <p>Four playbooks. Pick who’s calling the shots.</p>
+          <p>
+            Four playbooks. One lineup. Pick your numbers and make the damn
+            call.
+          </p>
         </div>
       </div>
       <div
@@ -254,9 +257,7 @@ export function LineupRecommendations({
         </>
       )}
       <details className="lineup-receipts">
-        <summary>
-          Open the playbook · numbers behind every roster option
-        </summary>
+        <summary>Show the receipts · every roster option</summary>
         <p>
           The selected source and risk preference set the lineup. A dash means
           unavailable. In combined mode, missing sources are omitted from the

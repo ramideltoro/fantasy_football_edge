@@ -49,7 +49,12 @@ app.use(
       directives: {
         "script-src": ["'self'"],
         "style-src": ["'self'", "'unsafe-inline'"],
-        "img-src": ["'self'", "data:", "https://a.espncdn.com"],
+        "img-src": [
+          "'self'",
+          "data:",
+          "https://a.espncdn.com",
+          "https://media.giphy.com",
+        ],
         "connect-src": ["'self'"],
         "font-src": ["'self'"],
       },

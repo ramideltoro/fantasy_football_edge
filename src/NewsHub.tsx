@@ -129,7 +129,8 @@ export function NewsHub({ onPlayer }: { onPlayer: (id: string) => void }) {
           <span className="eyebrow">PLAYER INTELLIGENCE</span>
           <h3>The sideline wire</h3>
           <p>
-            Rumors don’t score points. Here’s what the sources actually say.
+            The group chat has opinions. We brought damn sources. Read the
+            report before making the move.
           </p>
         </div>
         <small>News checked {date(n?.lastCollectedAt)}</small>
@@ -405,7 +406,7 @@ export function DecisionOverview({
       </article>
       <article className="panel priority-actions">
         <span className="eyebrow">THREE THINGS TO REVIEW</span>
-        <h3>Your decision queue</h3>
+        <h3>Three calls worth your damn attention</h3>
         <button className="action-row" onClick={onLineup}>
           <b>1 · Check your eligible lineup</b>
           <span>
@@ -491,7 +492,7 @@ export function PlayerNews({
   const p = analysis?.data?.players?.find((p: any) => p.id === player.id);
   return (
     <section className="player-intelligence">
-      <h3>Player intelligence</h3>
+      <h3>The scouting report · Bring receipts.</h3>
       {p?.history?.length > 0 && (
         <>
           <h4>Historical fantasy points</h4>

@@ -18,14 +18,15 @@ export function WaiverBrief({
       <div className="ai-heading">
         <div>
           <span className="ai-eyebrow">WAIVER INTELLIGENCE</span>
-          <h3>Who deserves a closer look?</h3>
+          <h3>Who can actually help this damn squad?</h3>
         </div>
         <span className="ai-badge">Qwen · Week {d?.week || "—"}</span>
       </div>
       <p>
-        Players to consider, ranked by Qwen using projected points, NFL roles
-        and recent reporting. Research covers up to two candidates for each of
-        the six positions. Predictions and reported opinions are uncertain.
+        Make the pickup earn its place. Qwen ranks candidates using points, NFL
+        roles and recent reporting. Research covers up to two candidates for
+        each of the six positions. Predictions and reported opinions are
+        uncertain.
       </p>
       <p role="status">
         {error

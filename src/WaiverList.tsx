@@ -16,8 +16,8 @@ export function WaiverList({
     <>
       <PlayerTable
         players={candidates}
-        title="Somebody left these guys here."
-        description="Same scouting board. Fresh possibilities. Find the pickup that makes your group chat nervous."
+        title="Their leftovers. Our next headache for the league."
+        description="Quit shopping for a famous name. Find a role, check the points, and make the pickup earn its damn locker."
         waivers
       />
       <details className="panel">

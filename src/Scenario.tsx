@@ -40,10 +40,10 @@ export function Scenario({
   return (
     <section className="panel scenario-panel">
       <span className="eyebrow">THE FRONT OFFICE</span>
-      <h2>Make the pickup earn its spot.</h2>
+      <h2>New guy wants a locker? Prove it.</h2>
       <p className="subtitle">
-        Who’s out? Who’s in? Compare the players, then see what the move does to
-        your next three lineups.
+        Don’t cut a player because Sunday hurt your feelings. Pick who goes and
+        who comes in; compare them, then check your next three lineups.
       </p>
       <div className="scenario-picks">
         <label>
@@ -230,7 +230,7 @@ export function Scenario({
         <PlayerTable
           players={choices}
           title="The free-agent aisle"
-          description="Kick the tires. Open any player for the full dossier."
+          description="Kick the tires. Check the damn engine. Open a player for the full scouting report."
           waivers
         />
       </details>

@@ -48,11 +48,12 @@ export function AIInsights({ owner }: { owner: boolean }) {
     <>
       <ProjectionStatus />
       <section className="panel">
-        <h3>Qwen player intelligence</h3>
+        <h3>Qwen’s film room · Show your damn work.</h3>
         <p>
-          Qwen does the homework. You make the call. Point forecasts use player
-          history, league scoring, ESPN roles and current reporting; Yahoo’s
-          number stays separate.
+          Qwen watches the numbers. You wear the headset. No gold stars for a
+          pretty forecast: check the evidence. Point forecasts use player
+          history, league scoring, ESPN roles and current reporting; Yahoo stays
+          separate.
         </p>
         <p role="status">
           Analysis: {state?.status || "Loading"} · Snapshot:{" "}
@@ -80,7 +81,7 @@ export function AIInsights({ owner }: { owner: boolean }) {
         <>
           <TeamBrief data={d} status={state.status} />
           <section className="panel">
-            <h3>Player decisions & evidence</h3>
+            <h3>The calls. The receipts.</h3>
             {d.qwen && <DecisionCharts data={d} mode="team" />}
             {d.qwen ? (
               <>

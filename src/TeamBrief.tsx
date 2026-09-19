@@ -2,13 +2,13 @@ import { PlayerLink, PlayerText } from "./PlayerExperience";
 export function TeamBrief({ data: d, status }: { data: any; status: string }) {
   const brief = d.qwen?.teamBrief;
   const labels: Record<string, string> = {
-    roster: "Roster assessment",
+    roster: "Who we’re rolling with",
     matchup: "This week’s matchup",
     risks: "Availability watch",
-    lineup: "Lineup opportunity",
+    lineup: "Points worth chasing",
     changes: "Suggested changes",
     waivers: "Waiver strategy",
-    uncertainty: "What remains uncertain",
+    uncertainty: "What we still don’t know",
   };
   return (
     <section className="panel ai-brief">
@@ -22,8 +22,8 @@ export function TeamBrief({ data: d, status }: { data: any; status: string }) {
       {brief ? (
         <>
           <p className="ai-intro">
-            Here’s the game plan. No clipboard poetry. Just the calls that
-            matter.
+            Pull up a damn bench. Here’s what the numbers say, where we can
+            improve, and what still needs a closer look.
           </p>
           <div className="ai-card-grid">
             {brief.priorities.map((x: any, i: number) => (
@@ -62,8 +62,8 @@ export function TeamBrief({ data: d, status }: { data: any; status: string }) {
       ) : (
         <p>
           {status === "failed"
-            ? "Briefing unavailable. Retry analysis above."
-            : "Qwen is preparing your team briefing."}
+            ? "The film room hit a snag. Retry analysis above."
+            : "Qwen’s in the film room. The game plan is coming."}
         </p>
       )}
     </section>

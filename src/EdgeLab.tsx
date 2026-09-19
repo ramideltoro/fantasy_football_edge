@@ -54,7 +54,7 @@ export function LabActions({
           ],
           [
             "Trade finder",
-            "Make them an offer.",
+            "Work the phones. Bring a real damn offer.",
             "Find roster fits that help both sides.",
           ],
         ].map(([tab, title, copy]) => (
@@ -97,8 +97,8 @@ export function UsageRadar({ lab, snapshot }: { lab: any; snapshot: any }) {
       <span className="eyebrow">OPPORTUNITY BEFORE HYPE</span>
       <h2>Who’s getting fed?</h2>
       <p>
-        Targets and carries are the invitation. Fantasy points are the party.
-        Catch the invite early.
+        Follow the touches. Hype doesn’t carry the damn football. Find growing
+        roles before the group chat catches on.
       </p>
       <div className="lab-controls">
         <label>
@@ -215,8 +215,8 @@ export function MatchupRadar({ lab, snapshot }: { lab: any; snapshot: any }) {
       <span className="eyebrow">KNOW THE TERRAIN</span>
       <h2>BBQ chicken or brick wall?</h2>
       <p>
-        Upcoming matchups, with opponent strength adjusted for the players they
-        have faced.
+        Find the soft spots before we charge into a brick wall. Opponent
+        strength is adjusted for the players they have faced.
       </p>
       <div className="filter-pills">
         {[
@@ -363,10 +363,10 @@ export function TradeFinder({ lab }: { lab: any }) {
   return (
     <section className="panel">
       <span className="eyebrow">THE TRADE DESK</span>
-      <h2>Make them an offer.</h2>
+      <h2>Work the phones. Bring a real damn offer.</h2>
       <p>
-        Find a roster fit. See what each side gains over the next three weeks
-        before you start talking smack.
+        Nobody wants three bench ornaments for their best player. Find a real
+        roster fit and check what both sides gain over the next three weeks.
       </p>
       <LabStatus lab={lab} />
       {!!lab?.proposals?.length && (
@@ -563,7 +563,7 @@ export function WaiverCoach({ lab, snapshot }: { lab: any; snapshot: any }) {
   return (
     <section className="panel">
       <span className="eyebrow">MAKE THE CLAIM COUNT</span>
-      <h2>Spend your priority wisely.</h2>
+      <h2>Don’t blow your claim on a shiny helmet.</h2>
       <p>
         {lab?.settings?.waiverType || "Waiver rules pending"} · Your imported
         priority: {own?.waiver ?? "unknown"}
@@ -633,7 +633,7 @@ export function PlayoffRace({ lab }: { lab: any }) {
   return (
     <section className="panel">
       <span className="eyebrow">THE LONG GAME</span>
-      <h2>Road to the playoffs.</h2>
+      <h2>Get in the dance. Then raise hell.</h2>
       <p>
         {lab?.settings?.playoffTeams || "—"} playoff spots · starts week{" "}
         {lab?.settings?.playoffWeek || "—"} ·{" "}
@@ -755,8 +755,8 @@ export function DraftRoom({ lab }: { lab: any }) {
       <span className="eyebrow">DRAFT PRACTICE · LOCAL SESSION</span>
       <h2>Build the monster.</h2>
       <p>
-        A lightweight draft board for planning and practice. Mark players taken,
-        compare tiers and leave your own notes.
+        Practice the draft before the clock makes you do dumb shit. Mark players
+        taken, compare tiers and leave notes for your future panicking self.
       </p>
       <div className="lab-controls">
         <label>

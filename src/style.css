@@ -4577,6 +4577,76 @@ th[aria-sort="descending"] .sort-indicator {
   font-size: 14px;
   margin-top: 24px;
 }
+.coach-reaction {
+  display: grid;
+  grid-template-columns: minmax(120px, 38%) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin: 18px 0 22px;
+  padding: 10px;
+  background: #17130e;
+  border: 1px solid #6b4a24;
+  border-radius: 14px;
+}
+.coach-reaction-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 9px;
+  background: #080808;
+  height: 148px;
+}
+.coach-reaction-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.coach-reaction .coach-reaction-toggle {
+  position: absolute;
+  bottom: 7px;
+  left: 7px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 5px 8px;
+  color: #fff;
+  background: #080808e8;
+  border: 1px solid #ffffff60;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.coach-reaction figcaption {
+  min-width: 0;
+}
+.coach-reaction .eyebrow {
+  font-size: 10px;
+  line-height: 1.5;
+}
+.coach-reaction figcaption p {
+  margin: 7px 0 9px;
+  color: #ffedcf;
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 750;
+}
+.coach-reaction figcaption a,
+.coach-reaction figcaption small {
+  display: block;
+  color: #c4b69f;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.coach-reaction-fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  color: #f5ad32;
+  font-size: 11px;
+}
 .coach-film .table-wrap {
   max-width: 100%;
 }

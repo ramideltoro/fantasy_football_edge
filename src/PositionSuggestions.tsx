@@ -40,7 +40,7 @@ export function PositionSuggestions({
       <div className="section-heading">
         <div>
           <span className="eyebrow">SIX POSITION WATCHLISTS</span>
-          <h3>Find your next addition</h3>
+          <h3>Find the help. Skip the hype.</h3>
         </div>
         <p>
           Qwen priority / 100 and projected fantasy points are separate

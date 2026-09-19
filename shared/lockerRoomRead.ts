@@ -1,6 +1,7 @@
 import type { PlayerData, SnapshotData } from "./model.ts";
 import { parsePlayers } from "./model.ts";
 import { leagueOverview } from "./analytics.ts";
+import { coachMood } from "./coachMood.ts";
 import {
   effectiveStatus,
   gameLocked,
@@ -274,6 +275,12 @@ export function lockerRoomRead(s: SnapshotData, now = Date.now()) {
   const payload = {
     headline,
     phase,
+    reactionMood: coachMood({
+      stale: sourceStale,
+      phase,
+      result: final?.result,
+      margin,
+    }),
     main,
     extra,
     evidenceAt,

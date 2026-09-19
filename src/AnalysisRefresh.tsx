@@ -47,7 +47,7 @@ export function AnalysisRefresh({
       <summary className="intel-summary">
         <span>
           <span className={"status-dot " + (run ? "working" : "")} />
-          {run ? "The film room is working" : "Your latest intel"}
+          {run ? "Coach is checking the film" : "Fresh off the clipboard"}
         </span>
         <small>
           Yahoo{" "}
@@ -61,7 +61,7 @@ export function AnalysisRefresh({
       <div>
         <span className={"status-dot " + (run ? "working" : "")} />
         <strong>
-          {run ? "Updating intelligence" : "Your latest intelligence"}
+          {run ? "Updating intelligence" : "Fresh off the clipboardligence"}
         </strong>
         <small>
           Yahoo {new Date(snapshotAt).toLocaleString()} · Qwen{" "}

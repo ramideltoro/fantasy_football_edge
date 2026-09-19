@@ -1,12 +1,12 @@
 export const sections = [
   {
     name: "Overview",
-    description: "Your squad. This week’s showdown. The big picture.",
+    description: "Your squad. This week’s fight. Let’s give them hell.",
     menus: [{ name: "This week", pages: ["Overview"] }],
   },
   {
     name: "My Team",
-    description: "Know your roster, set your lineup and get ready for kickoff.",
+    description: "Check the squad. Set the lineup. Make every damn slot count.",
     menus: [
       {
         name: "This week",
@@ -17,7 +17,7 @@ export const sections = [
   },
   {
     name: "Waivers",
-    description: "Find your next difference-maker, then work out the pickup.",
+    description: "Somebody left points on the shelf. Let’s go get them.",
     menus: [
       { name: "Find players", pages: ["Waiver list", "Breakout radar"] },
       { name: "Plan a pickup", pages: ["Pickup impact", "Claim coach"] },
@@ -25,7 +25,7 @@ export const sections = [
   },
   {
     name: "League",
-    description: "Size up the league, work a trade and watch the playoff race.",
+    description: "Know the competition. Work a deal. Make them sweat.",
     menus: [
       {
         name: "Around the league",
@@ -36,7 +36,7 @@ export const sections = [
   {
     name: "Research",
     description:
-      "Follow the news, dig into the analysis and check the receipts.",
+      "Watch the film. Check the receipts. Call bullshit when the numbers do.",
     menus: [
       {
         name: "News & analysis",
@@ -48,7 +48,7 @@ export const sections = [
   },
   {
     name: "Operations",
-    description: "Data sources, refresh controls and import health.",
+    description: "Keep the film fresh. Even a loudmouth coach needs good data.",
     menus: [
       { name: "Data & refresh", pages: ["Yahoo refresh", "Import health"] },
     ],

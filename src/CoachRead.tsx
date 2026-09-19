@@ -2,6 +2,7 @@ import { ChevronRight, ClipboardList } from "lucide-react";
 import type { LockerRoomRead } from "../shared/lockerRoomRead";
 import { PlayerText } from "./PlayerExperience";
 import { SortableTable } from "./SortableTable";
+import { CoachReaction } from "./CoachReaction";
 const stamp = (value: string | null) =>
   value
     ? new Date(value).toLocaleString([], {
@@ -50,6 +51,7 @@ export function CoachRead({
         <span className={"dot " + (read.stale ? "warn" : "")} /> Read updated{" "}
         <time dateTime={read.updatedAt}>{stamp(read.updatedAt)}</time>
       </p>
+      <CoachReaction mood={read.reactionMood || "check-film"} />
       <div className="coach-sections">
         {read.main.map((section) => (
           <div

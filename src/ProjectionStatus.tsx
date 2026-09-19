@@ -21,7 +21,7 @@ export function ProjectionStatus() {
   }, []);
   return (
     <section className="panel">
-      <h3>Qwen’s numbers, receipts included</h3>
+      <h3>Qwen’s numbers. Make ’em show their work.</h3>
       <p>
         Qwen calculates these forecasts from league scoring, actual player
         history, current roles and reporting. Yahoo’s projection is kept out of

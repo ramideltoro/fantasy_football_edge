@@ -216,7 +216,7 @@ function Dashboard({
           ))}
         </nav>
         <div className="sidebar-footer">
-          <span className="dot" /> TALK IS CHEAP. POINTS AREN’T.
+          <span className="dot" /> BIG MOUTH. REAL RECEIPTS.
           <p>Bring the noise. Bring the receipts.</p>
           <a href="/auth/google">
             <Lock size={13} />
@@ -301,14 +301,16 @@ function Dashboard({
         )}
         {error && <div className="notice">{error}</div>}
         {!d && !error ? (
-          <div className="loading">Taping ankles. Loading the squad…</div>
+          <div className="loading">
+            Taping ankles. Finding the damn clipboard…
+          </div>
         ) : !s ? (
           <section className="hero">
             <span className="eyebrow">READY FOR YOUR LEAGUE</span>
             <h2>
-              Your next advantage
+              Bring your roster.
               <br />
-              starts with real data.
+              We’ll bring the noise.
             </h2>
             <p>
               The dashboard is ready. Connect the Mac importer to bring in your
@@ -365,8 +367,8 @@ function Dashboard({
               <>
                 <PlayerTable
                   players={players}
-                  title="Your squad. Your call."
-                  description="Set the tone. Check the matchups. Make the league sweat."
+                  title="Your squad. Make every damn slot count."
+                  description="Big names don’t get free passes. Check the health, compare the points, put the right crew on the field."
                 />
                 <TeamScoring
                   players={players}
@@ -461,10 +463,10 @@ function Dashboard({
             {tab === "League" && (
               <>
                 <Panel
-                  title="League standings"
+                  title="League standings · Who’s talking now?"
                   subtitle={
                     d.owner
-                      ? "Owner view · league standings"
+                      ? "The scoreboard keeps receipts. See who’s earned the noise."
                       : "Team names on the board. Manager identities stay in the locker room."
                   }
                 >
@@ -660,7 +662,7 @@ function Dashboard({
             )}
             <footer>
               FANTASY FOOTBALL EDGE{" "}
-              <span>Big talk. Real sources. Your roster, your call.</span>
+              <span>Talk your shit. Check your sources. Set your lineup.</span>
             </footer>
           </>
         )}

@@ -732,7 +732,7 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
       </details>
       <section className="dossier-section">
         <h4>
-          <Zap size={17} /> Qwen’s read
+          <Zap size={17} /> Qwen’s call · Check the receipts
         </h4>
         {q ? (
           <>
@@ -800,7 +800,7 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
       </section>
       {p.profile && (
         <section className="dossier-section">
-          <h4>The player behind the points</h4>
+          <h4>Who’s under the helmet?</h4>
           <dl className="detail-grid">
             {Object.entries({
               Age: p.profile.age,
@@ -931,7 +931,10 @@ export function HealthBoard({ players }: { players: PlayerData[] }) {
         <div>
           <span className="eyebrow">THE AVAILABILITY CHECK</span>
           <h2>Who’s ready to rumble?</h2>
-          <p>Before the hype, check who can actually suit up.</p>
+          <p>
+            All the trash talk in the world won’t fix an empty slot. Check who
+            can suit up.
+          </p>
         </div>
       </div>
       <div className="health-boxes">
