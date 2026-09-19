@@ -1,5 +1,4 @@
 import {
-  LabActions,
   UsageRadar,
   MatchupRadar,
   TradeFinder,
@@ -10,7 +9,6 @@ import {
 import { recordSortValue } from "../shared/tableSort";
 import { LineupRecommendations } from "./LineupRecommendations";
 import {
-  ActionBrief,
   ChangesFeed,
   KickoffDesk,
   ThreeWeekPlanner,
@@ -21,45 +19,18 @@ import {
 import { SortableTable } from "./SortableTable";
 import {
   PlayerProvider,
-  PlayerChartTick,
-  yahooPoints,
   PlayerTable,
   PlayerLink,
-  PlayerText,
-  HealthBoard,
   usePlayers,
 } from "./PlayerExperience";
 import { waiverShortlist } from "../shared/shortlist";
-import {
-  NewsHub,
-  NewsOperations,
-  DecisionOverview,
-  PlayerNews,
-} from "./NewsHub";
+import { NewsHub, NewsOperations, DecisionOverview } from "./NewsHub";
 import { AnalysisRefresh } from "./AnalysisRefresh";
-import { ProjectionValue, ProjectionDetails } from "./ProjectionValue";
 import { AIInsights } from "./AIInsights";
 import { ImportOperations } from "./ImportOperations";
-import { useNflDepth, nflRole } from "./nflRole";
 import { WaiverList } from "./WaiverList";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  LineChart,
-  Line,
-  Legend,
-  LabelList,
-  ScatterChart,
-  Scatter,
-  ZAxis,
-} from "recharts";
 import {
   Activity,
   ArrowUpRight,
@@ -67,47 +38,17 @@ import {
   Users,
   ChartNoAxesCombined,
   RefreshCw,
-  Search,
   Lock,
   ChevronRight,
   Zap,
 } from "lucide-react";
 import type { PlayerData } from "../shared/model";
 import { Scenario } from "./Scenario";
+import { sections, pageLabels, validTab, sectionFor } from "./navigation";
+import { WeeklyOverview } from "./WeeklyOverview";
+import { TeamScoring } from "./TeamScoring";
 import "./style.css";
 const fmt = (n: number | null | undefined) => (n == null ? "—" : n.toFixed(1));
-const groups: Record<string, string[]> = {
-  Overview: ["Overview"],
-  "My Team": [
-    "My roster",
-    "Recommendations",
-    "Three-week plan",
-    "Kickoff watch",
-    "Matchup radar",
-    "AI insights",
-  ],
-  Waivers: ["Waiver list", "Pickup impact", "Breakout radar", "Claim coach"],
-  Research: ["Report card", "Weekly recap", "What changed", "News & trends"],
-  League: ["League", "Trade finder", "Playoff race"],
-  "Draft Room": ["Draft Room"],
-  Operations: ["Yahoo refresh", "Import health"],
-};
-const validTab = (hash: string) => {
-  let name = "";
-  try {
-    name = decodeURIComponent(hash.replace(/^#/, ""));
-  } catch {}
-  return Object.values(groups).flat().includes(name) ? name : "Overview";
-};
-const labels: Record<string, string> = {
-  "My roster": "Roster",
-  Recommendations: "Lineup & decisions",
-  "AI insights": "Team analysis",
-  "Waiver list": "Waivers",
-  "News & trends": "News intelligence",
-  "Yahoo refresh": "Worker activity",
-  "Import health": "Import health",
-};
 function Dashboard({
   onPlayers,
 }: {
@@ -232,14 +173,8 @@ function Dashboard({
       ],
       [s],
     ),
-    starters = players.filter(
-      (p) => !["BN", "IR", "IR+", "NA"].includes(p.slot),
-    ),
-    sum = (key: "actual" | "projected") =>
-      starters.reduce((a, p) => a + (p[key] || 0), 0),
-    a = d?.advice,
-    changes = a?.changes || [],
-    name = (id: string) => pool.find((p) => p.id === id)?.name || id;
+    a = d?.advice;
+  const activeSection = sectionFor(tab);
   return (
     <div className="app">
       <aside>
@@ -255,25 +190,26 @@ function Dashboard({
           </span>
         </a>
         <div className="nav-label">WELCOME TO THE BIG LEAGUES</div>
-        <nav>
-          {Object.entries(groups).map(([group, items], i) => (
+        <nav aria-label="Main sections">
+          {sections.map(({ name: group, menus }) => (
             <button
               key={group}
               className={
-                (items.includes(tab) ? "active " : "") +
+                (group === activeSection.name ? "active " : "") +
                 (group === "Operations" ? "operations-nav" : "")
               }
-              onClick={() => setTab(items[0])}
+              onClick={() => setTab(menus[0].pages[0])}
+              aria-current={group === activeSection.name ? "page" : undefined}
             >
               {
-                [
-                  <Activity />,
-                  <Users />,
-                  <Zap />,
-                  <ChartNoAxesCombined />,
-                  <Shield />,
-                  <RefreshCw />,
-                ][i]
+                {
+                  Overview: <Activity />,
+                  "My Team": <Users />,
+                  Waivers: <Zap />,
+                  League: <Shield />,
+                  Research: <ChartNoAxesCombined />,
+                  Operations: <RefreshCw />,
+                }[group]
               }
               {group}
             </button>
@@ -292,11 +228,8 @@ function Dashboard({
         <header>
           <div>
             <span className="eyebrow">SUNDAY IS A CONTACT SPORT</span>
-            <h1>
-              {Object.entries(groups).find(([, items]) =>
-                items.includes(tab),
-              )?.[0] || tab}
-            </h1>
+            <h1>{activeSection.name}</h1>
+            <p className="section-description">{activeSection.description}</p>
           </div>
           <div className="header-right">
             {d?.owner ? (
@@ -331,55 +264,41 @@ function Dashboard({
             </button>
           </div>
         </header>
-        {s && (
-          <div className="game-day-banner">
-            <span className="game-day-kicker">
-              WEEK {s.week} · THE HEAT IS ON
-            </span>
-            <strong>
-              {tab === "My roster"
-                ? "BENCH THE DOUBT."
-                : tab === "Waiver list"
-                  ? "GO FIND A MENACE."
-                  : tab === "News & trends"
-                    ? "CHECK THE RECEIPTS."
-                    : "BRING THE NOISE."}
-            </strong>
-            <span>
-              {tab === "My roster"
-                ? "Big names are cute. Big points pay the rent."
-                : tab === "Waiver list"
-                  ? "One manager’s leftovers. Your next victory lap."
-                  : "Your league called. They’d like you to stop getting better."}
-            </span>
-            <Zap className="banner-zap" aria-hidden="true" />
+        {activeSection.name !== "Overview" && (
+          <div
+            className="section-menu"
+            role="navigation"
+            aria-label={activeSection.name + " tools"}
+          >
+            {activeSection.menus.map((menu) => (
+              <div className="section-menu-group" key={menu.name}>
+                <span className="section-menu-label">{menu.name}</span>
+                <div
+                  className="section-menu-links"
+                  role="group"
+                  aria-label={menu.name}
+                >
+                  {menu.pages.map((page) => (
+                    <button
+                      key={page}
+                      aria-pressed={tab === page}
+                      onClick={() => setTab(page)}
+                    >
+                      {pageLabels[page] || page}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
-        {s && (
+        {s && activeSection.name === "Operations" && (
           <AnalysisRefresh
             owner={d.owner}
             snapshotAt={s.capturedAt}
             onOperations={() => setTab("Yahoo refresh")}
           />
         )}
-        <div className="section-tabs">
-          {Object.values(groups)
-            .find((items) => items.includes(tab))
-            ?.filter(
-              () =>
-                Object.values(groups).find((items) => items.includes(tab))!
-                  .length > 1,
-            )
-            .map((t) => (
-              <button
-                key={t}
-                aria-pressed={tab === t}
-                onClick={() => setTab(t)}
-              >
-                {labels[t] || t}
-              </button>
-            ))}
-        </div>
         {error && <div className="notice">{error}</div>}
         {!d && !error ? (
           <div className="loading">Taping ankles. Loading the squad…</div>
@@ -409,6 +328,14 @@ function Dashboard({
               <span>
                 Imported {new Date(s.capturedAt).toLocaleString()}{" "}
                 {a.stale && "· Refresh overdue"}
+                {activeSection.name !== "Operations" && (
+                  <button
+                    className="data-status-link"
+                    onClick={() => setTab("Yahoo refresh")}
+                  >
+                    Sources & refresh <ChevronRight size={12} />
+                  </button>
+                )}
               </span>
             </div>
             {a.stale && (
@@ -418,132 +345,14 @@ function Dashboard({
               </div>
             )}
             {tab === "Overview" && (
-              <>
-                <ActionBrief snapshot={s} plan={d.gamePlan} navigate={setTab} />
-                <LabActions lab={lab} navigate={setTab} />
-                <HealthBoard players={players} />
-                <ChangesFeed plan={d.gamePlan} compact navigate={setTab} />
-                <section className="panel matchup-commentary">
-                  <span className="eyebrow">
-                    WEEK {s.week} · THE LOCKER-ROOM READ
-                  </span>
-                  <h2>Here’s how this week could go.</h2>
-                  {d.matchupCommentary?.map((p: string, i: number) => (
-                    <p key={i}>
-                      <PlayerText text={p} />
-                    </p>
-                  ))}
-                  <small>
-                    Based on current Yahoo matchup totals, your lineup and
-                    imported health flags. Forecasts can change.
-                  </small>
-                </section>
-                <div className="metrics">
-                  <Metric
-                    label="Points so far"
-                    value={fmt(sum("actual"))}
-                    note="Imported starter totals"
-                  />
-                  <button
-                    className="gain-link"
-                    onClick={() => setTab("Recommendations")}
-                    aria-label="View potential lineup gain and required changes"
-                  >
-                    <Metric
-                      label="Potential lineup gain"
-                      value={
-                        a.delta == null ? "—" : `+${fmt(Math.max(0, a.delta))}`
-                      }
-                      note={
-                        a.complete
-                          ? "Eligible, unlocked positions"
-                          : "Missing eligible projections"
-                      }
-                    />
-                  </button>
-                  <Metric
-                    label="Roster watch"
-                    value={String(a.alerts.length)}
-                    note="Injury statuses and bye weeks"
-                  />
-                  <Metric
-                    label="Players tracked"
-                    value={String(pool.length)}
-                    note="Roster + imported player pool"
-                  />
-                </div>
-                <div className="grid">
-                  <Panel
-                    title="Who’s carrying the cooler?"
-                    subtitle="Current week · Yahoo projections and scored actuals. Unplayed games have no actual score yet."
-                  >
-                    <ResponsiveContainer width="100%" height={290}>
-                      <BarChart
-                        className="cooler-chart"
-                        margin={{ top: 28, right: 12, bottom: 8, left: 0 }}
-                        data={starters.map((p) => ({
-                          name: p.name,
-                          Projected: yahooPoints(p),
-                          Actual: p.actual,
-                        }))}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" tick={<PlayerChartTick />} />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar
-                          isAnimationActive={false}
-                          dataKey="Projected"
-                          fill="#ffbb38"
-                          legendType="square"
-                          radius={[4, 4, 0, 0]}
-                        />
-                        <Bar
-                          isAnimationActive={false}
-                          dataKey="Actual"
-                          fill="#83d5af"
-                          legendType="square"
-                          minPointSize={3}
-                          radius={[4, 4, 0, 0]}
-                        >
-                          <LabelList
-                            dataKey="Actual"
-                            position="top"
-                            fill="#83d5af"
-                            fontSize={11}
-                            formatter={(v: any) =>
-                              v == null ? "" : Number(v).toFixed(2)
-                            }
-                          />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Panel>
-                  <Panel
-                    title="Hold up. Check these guys."
-                    subtitle="Check these before kickoff"
-                  >
-                    {a.alerts.length ? (
-                      a.alerts.slice(0, 6).map((x: any) => (
-                        <div className="watch" key={x.playerId}>
-                          <span className="player-icon">
-                            {pool.find((p) => p.id === x.playerId)?.position}
-                          </span>
-                          <div>
-                            <PlayerLink id={x.playerId} />
-                            <p>{x.message}</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="empty">
-                        No injury or bye flags in the imported roster.
-                      </p>
-                    )}
-                  </Panel>
-                </div>
-              </>
+              <WeeklyOverview
+                teamName={s.team.name}
+                week={s.week}
+                players={players}
+                matchup={d.league?.matchup || null}
+                commentary={d.matchupCommentary}
+                navigate={setTab}
+              />
             )}
             {tab === "Breakout radar" && <UsageRadar lab={lab} snapshot={s} />}
             {tab === "Matchup radar" && <MatchupRadar lab={lab} snapshot={s} />}
@@ -552,23 +361,29 @@ function Dashboard({
             {tab === "Playoff race" && <PlayoffRace lab={lab} />}
             {tab === "Draft Room" && <DraftRoom lab={lab} />}
             {tab === "My roster" && (
-              <PlayerTable
-                players={players}
-                title="Your squad. Your call."
-                description="Set the tone. Check the matchups. Make the league sweat."
-              />
+              <>
+                <PlayerTable
+                  players={players}
+                  title="Your squad. Your call."
+                  description="Set the tone. Check the matchups. Make the league sweat."
+                />
+                <TeamScoring
+                  players={players}
+                  matchup={d.league?.matchup || null}
+                />
+              </>
             )}
 
             {tab === "Waiver list" && (
-              <WaiverList pool={pool} onPlayer={setSelected} />
-            )}
-            {tab === "Recommendations" && (
               <>
-                <LineupRecommendations snapshot={s} />
-                <Panel
-                  title="Waiver shortlist"
-                  subtitle="Up to three quarterbacks, then the best of the rest. We’re building a roster, not a QB convention."
-                >
+                {" "}
+                <details className="panel waiver-shortlist">
+                  <summary>
+                    Waiver shortlist{" "}
+                    <span>
+                      Quick picks · up to 3 QBs, then the best of the rest
+                    </span>
+                  </summary>
                   {s.available.length ? (
                     waiverShortlist(s.available).map((p: PlayerData) => (
                       <div className="watch" key={p.id}>
@@ -587,26 +402,12 @@ function Dashboard({
                       Availability must be checked in Yahoo before a claim.
                     </p>
                   )}
-                </Panel>
+                </details>
+                <WaiverList pool={pool} onPlayer={setSelected} />
               </>
             )}
             {tab === "Recommendations" && (
-              <section className="panel gameplan-shortcuts">
-                <h3>Plan the next move.</h3>
-                <p>
-                  A stronger lineup starts before Sunday. Check your gaps, keep
-                  a backup ready and test a pickup.
-                </p>
-                <div className="panel-actions">
-                  {["Three-week plan", "Kickoff watch", "Pickup impact"].map(
-                    (t) => (
-                      <button key={t} onClick={() => setTab(t)}>
-                        {t} <ChevronRight size={15} />
-                      </button>
-                    ),
-                  )}
-                </div>
-              </section>
+              <LineupRecommendations snapshot={s} />
             )}
             {tab === "Pickup impact" && (
               <Scenario snapshot={s} plan={d.gamePlan} />
@@ -626,6 +427,31 @@ function Dashboard({
                 navigate={setTab}
               />
             )}
+            {tab === "Kickoff watch" && (
+              <details className="panel roster-flags">
+                <summary>
+                  All roster injury & bye flags{" "}
+                  <span>Including your bench</span>
+                </summary>
+                {a.alerts.length ? (
+                  a.alerts.slice(0, 6).map((x: any) => (
+                    <div className="watch" key={x.playerId}>
+                      <span className="player-icon">
+                        {pool.find((p) => p.id === x.playerId)?.position}
+                      </span>
+                      <div>
+                        <PlayerLink id={x.playerId} />
+                        <p>{x.message}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty">
+                    No injury or bye flags in the imported roster.
+                  </p>
+                )}
+              </details>
+            )}
             {tab === "Report card" && (
               <ProjectionReportCard plan={d.gamePlan} />
             )}
@@ -633,80 +459,6 @@ function Dashboard({
             {tab === "What changed" && <ChangesFeed plan={d.gamePlan} />}
             {tab === "League" && (
               <>
-                <Panel
-                  title="Weekly matchup"
-                  subtitle="Know who’s across the field. Team names are public; manager identities stay private."
-                >
-                  {d.league?.matchup ? (
-                    <>
-                      <div className="metrics">
-                        <Metric
-                          label="Your live projection"
-                          value={fmt(d.league.matchup.ownProjected)}
-                          note="Includes current game results"
-                        />
-                        <Metric
-                          label={
-                            (d.league.matchup.opponentName || "Opponent") +
-                            " projection"
-                          }
-                          value={fmt(d.league.matchup.opponentProjected)}
-                          note="Yahoo live projection"
-                        />
-                        <Metric
-                          label="Your points"
-                          value={fmt(d.league.matchup.ownActual)}
-                          note="Latest imported score"
-                        />
-                        <Metric
-                          label="Yahoo win probability"
-                          value={
-                            d.league.matchup.winProbability == null
-                              ? "—"
-                              : d.league.matchup.winProbability + "%"
-                          }
-                          note="Provider estimate, not a guarantee"
-                        />
-                      </div>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <BarChart
-                          layout="vertical"
-                          data={[
-                            {
-                              name: "Your team",
-                              Original: d.league.matchup.ownOriginal,
-                              Live: d.league.matchup.ownProjected,
-                            },
-                            {
-                              name: d.league.matchup.opponentName || "Opponent",
-                              Original: d.league.matchup.opponentOriginal,
-                              Live: d.league.matchup.opponentProjected,
-                            },
-                          ]}
-                        >
-                          <XAxis type="number" />
-                          <YAxis type="category" dataKey="name" />
-                          <Tooltip />
-                          <Legend />
-                          <Bar
-                            isAnimationActive={false}
-                            dataKey="Original"
-                            fill="#60697f"
-                          />
-                          <Bar
-                            isAnimationActive={false}
-                            dataKey="Live"
-                            fill="#f5ad32"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </>
-                  ) : (
-                    <p className="empty">
-                      Matchup summary is unavailable in this import.
-                    </p>
-                  )}
-                </Panel>
                 <Panel
                   title="League standings"
                   subtitle={
