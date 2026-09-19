@@ -55,3 +55,9 @@ The launch agent checks every 15 minutes. Normal imports are throttled to hourly
 Use `compose.yaml` with a private `.env` containing `DB_PASSWORD`, `IMPORT_TOKEN` and Google OAuth settings. Web binds only to VPS loopback port 3102; PostgreSQL has no published port. Put an HTTPS reverse proxy in front. Back up the database volume before upgrades. `GET /healthz` checks database connectivity.
 
 All recommendations are advisory. Yahoo projections and imported Yahoo matchup probabilities are labeled as such. Accuracy appears only after a forecast was stored before game start and a completed result arrives. No Yahoo lineup, transaction or trade write operation is implemented.
+
+## Yahoo authorized connection
+
+Operations now includes an owner-only Connect Yahoo flow and a server-side API adapter. Configure `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`, and a persistent random 32-byte hex `YAHOO_TOKEN_KEY`; callback `/auth/yahoo/callback`. Tokens are encrypted at rest. Successful API syncs run every 15 minutes and supersede browser uploads.
+
+**Current rollout is blocked by Yahoo application permissions.** Live OAuth succeeds, but league discovery returns HTTP 403: “This application is not authorized to perform this action.” Existing browser sync remains active until an API snapshot succeeds. Do not remove the Mac app: its separate AI worker must also be migrated. See [authorized-sync status and verification](https://github.com/ramideltoro/fantasy_football_edge_wiki/blob/main/Yahoo-Authorized-Sync.md).

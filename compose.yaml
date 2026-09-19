@@ -18,6 +18,9 @@ services:
     environment:
       APP_ORIGIN: https://fantasy.ramideltoro.com
       DATABASE_URL: postgres://edge:${DB_PASSWORD}@db:5432/edge
+      YAHOO_CLIENT_ID: ${YAHOO_CLIENT_ID:-}
+      YAHOO_CLIENT_SECRET: ${YAHOO_CLIENT_SECRET:-}
+      YAHOO_TOKEN_KEY: ${YAHOO_TOKEN_KEY:-}
       IMPORT_TOKEN: ${IMPORT_TOKEN}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

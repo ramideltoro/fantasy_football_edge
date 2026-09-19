@@ -34,7 +34,7 @@ export function AnalysisRefresh({
       setNotice(
         kind === "news"
           ? "News refresh queued; unchanged evidence will be reused."
-          : "Yahoo refresh queued on your Mac.",
+          : "Yahoo refresh queued.",
       );
     } catch {
       setNotice("Refresh unavailable. Check owner sign-in and Operations.");

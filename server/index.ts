@@ -1,3 +1,4 @@
+import { installYahoo } from "./yahooService.ts";
 import { enrichSnapshot } from "./enrichSnapshot.ts";
 import { installGamePlan } from "./gamePlanService.ts";
 import { matchupCommentary } from "../shared/matchupCommentary.ts";
@@ -202,6 +203,7 @@ app.post("/api/logout", async (q, r) => {
   r.clearCookie("edge_session");
   r.json({ ok: true });
 });
+await installYahoo(app, db, async (q) => (await session(q))?.email === owner, cookie);
 app.post("/api/import/request", async (q, r) => {
   if (q.headers.origin !== origin || (await session(q))?.email !== owner)
     return r.sendStatus(403);
