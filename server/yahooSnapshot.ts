@@ -172,6 +172,68 @@ export async function fetchYahooSnapshot(
       ),
     ]),
   ];
+  sections[0].tables.push(
+    table(
+      ["Setting", "Value"],
+      [
+        row(["Waiver Type:", settings.waiver_type || "Unknown"]),
+        row([
+          "Playoffs:",
+          settings.num_playoff_teams && settings.playoff_start_week
+            ? settings.num_playoff_teams +
+              " teams - Week " +
+              settings.playoff_start_week
+            : "",
+        ]),
+        row([
+          "Play Against Median Score:",
+          settings.has_median_matchup === "1"
+            ? "Yes"
+            : settings.has_median_matchup === "0"
+              ? "No"
+              : "Unknown",
+        ]),
+        row(["Divisions:", settings.divisions ? "Yes" : "No"]),
+      ],
+    ),
+  );
+  const leagueRosters: any[] = [];
+  // Optional scouting must not invalidate a complete core API import.
+  for (const t of teams) {
+    try {
+      const rosterData =
+        t.team_key === mine.team_key
+          ? players
+          : list(
+              (
+                await get(
+                  `team/${t.team_key}/roster;week=${week}/players/stats;type=week;week=${week}`,
+                )
+              ).team?.roster?.players?.player,
+            ).map((p) => apiPlayer(p, names));
+      const matches = list(
+        (await get(`team/${t.team_key}/matchups`)).team?.matchups?.matchup,
+      );
+      const schedule = matches.flatMap((m) => {
+        const opponent = list(m.teams?.team).find(
+          (o) => o.team_key !== t.team_key,
+        );
+        return opponent
+          ? [{ week: Number(m.week), opponent: id(opponent.team_key) }]
+          : [];
+      });
+      if (rosterData.length)
+        leagueRosters.push({
+          teamId: id(t.team_key),
+          name: t.name,
+          capturedAt,
+          players: rosterData,
+          schedule,
+        });
+    } catch {
+      /* Scouting coverage remains explicit until this source is available. */
+    }
+  }
   const scoreText =
     own && opp
       ? `${own.team_points?.total ?? ""} vs ${opp.team_points?.total ?? ""}`
@@ -309,6 +371,7 @@ export async function fetchYahooSnapshot(
     players,
     available: [...new Map(available.map((p) => [p.id, p])).values()],
     sections,
+    leagueRosters,
     coverage,
   });
 }

@@ -1,3 +1,4 @@
+import { installEdgeLab } from "./edgeLabService.ts";
 import { installYahoo } from "./yahooService.ts";
 import { enrichSnapshot } from "./enrichSnapshot.ts";
 import { installGamePlan } from "./gamePlanService.ts";
@@ -203,7 +204,12 @@ app.post("/api/logout", async (q, r) => {
   r.clearCookie("edge_session");
   r.json({ ok: true });
 });
-await installYahoo(app, db, async (q) => (await session(q))?.email === owner, cookie);
+await installYahoo(
+  app,
+  db,
+  async (q) => (await session(q))?.email === owner,
+  cookie,
+);
 app.post("/api/import/request", async (q, r) => {
   if (q.headers.origin !== origin || (await session(q))?.email !== owner)
     return r.sendStatus(403);
@@ -497,6 +503,7 @@ await installIntelligence(
   async (q) => (await session(q))?.email === owner,
   () => newsService.articles(),
 );
+await installEdgeLab(app, db);
 const gamePlanService = await installGamePlan(app, db, async (raw) =>
   enrichSnapshot(db, raw, await sportsbookService.state()),
 );

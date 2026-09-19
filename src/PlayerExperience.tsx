@@ -612,6 +612,38 @@ function PlayerDossier({ player: p }: { player: PlayerData }) {
           </span>
         </div>
       </div>
+      {p.research?.lab && (
+        <details className="dossier-section" open>
+          <summary>Workload & matchup receipts</summary>
+          <p>
+            {p.research.lab.usage?.trend || "Workload sample pending"} ·{" "}
+            {p.research.lab.history.length} scored games ·{" "}
+            {p.research.lab.usage?.priorSeason
+              ? "Includes prior season"
+              : "Current season"}
+          </p>
+          <p>
+            Statistical baseline: {points(p.research.lab.baseline)} points.{" "}
+            {p.research.lab.baselineMethod}. Latest targets:{" "}
+            {p.research.lab.usage?.targets ?? "—"} · carries:{" "}
+            {p.research.lab.usage?.carries ?? "—"} · target share:{" "}
+            {p.research.lab.usage?.targetShare == null
+              ? "—"
+              : Math.round(p.research.lab.usage.targetShare * 100) + "%"}
+            .
+          </p>
+          {p.research.lab.matchups.slice(0, 3).map((m: any) => (
+            <p key={m.week}>
+              Week {m.week}: {m.bye ? "Bye" : m.opponent || "Unknown"} ·{" "}
+              {m.label} · {m.samples} comparison player-games.
+            </p>
+          ))}
+          <small>
+            nflverse historical production scored with your league rules.
+            Statistical context, separate from Qwen and Yahoo projections.
+          </small>
+        </details>
+      )}
       <div className="dossier-projections">
         <div>
           <small>YAHOO PROJECTED</small>

@@ -68,8 +68,9 @@ export function strategyLineup(
   s: SnapshotData,
   mode: ProjectionMode,
   risk: RiskMode,
+  constraints: { pinned?: string[]; excluded?: string[] } = {},
 ) {
-  const base = lineupAdvice(s, mode);
+  const base = lineupAdvice(s, mode, constraints);
   const ranges = Object.fromEntries(
     s.players.map((p) => [
       p.id,
@@ -83,15 +84,18 @@ export function strategyLineup(
       strategyDelta: base.delta,
       risk: "balanced" as RiskMode,
     };
-  const ranked = advice({
-    ...s,
-    players: s.players.map((p) => ({
-      ...p,
-      projected:
-        (risk === "protect" ? ranges[p.id].low : ranges[p.id].high) ??
-        base.projections[p.id].points,
-    })),
-  });
+  const ranked = advice(
+    {
+      ...s,
+      players: s.players.map((p) => ({
+        ...p,
+        projected:
+          (risk === "protect" ? ranges[p.id].low : ranges[p.id].high) ??
+          base.projections[p.id].points,
+      })),
+    },
+    constraints,
+  );
   const current = s.players.filter(
     (p) => !reserveSlots.has(p.slot) && !gameLocked(p),
   );

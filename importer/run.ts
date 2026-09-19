@@ -288,6 +288,70 @@ async function main() {
       await progress("Reading " + entry.kind);
       pages.push(await readPage(url.href, "#yspmain", entry.kind));
     }
+    // League scouting is read-only and cached for six hours; regular roster imports retain their cadence.
+    const scoutingFile = path.join(dir, "league-scouting.json");
+    const cachedScouting = fs.existsSync(scoutingFile)
+      ? JSON.parse(fs.readFileSync(scoutingFile, "utf8"))
+      : null;
+    const ownId = new URL(config.rosterUrl).pathname
+      .split("/")
+      .filter(Boolean)
+      .at(-1);
+    if (
+      cachedScouting?.root === root &&
+      Date.now() - Date.parse(cachedScouting.capturedAt) < 6 * 3600000
+    ) {
+      pages.push(...cachedScouting.pages);
+    } else {
+      const teams = new Map<string, string>();
+      for (const row of pages
+        .find((p) => p.kind === "league")
+        ?.tables.find((t) => t.headers.some((h) => h.text === "W-L-T"))?.rows ||
+        []) {
+        const link = row.links.find(
+          (l) => l.text && /\/f1\/\d+\/\d+\/?$/.test(l.url),
+        );
+        if (link)
+          teams.set(
+            new URL(link.url).pathname.split("/").filter(Boolean).at(-1)!,
+            link.url,
+          );
+      }
+      const scouts: PageCapture[] = [];
+      const capturedAt = new Date().toISOString();
+      for (const [teamId, teamUrl] of teams) {
+        if (teamId === ownId) continue;
+        await progress("Scouting league roster " + teamId);
+        const roster = await readPage(teamUrl, "#statTable0", "league-roster");
+        roster.filters = { ...roster.filters, teamId, capturedAt };
+        scouts.push(roster);
+        const scheduleUrl = new URL(
+          root + "/",
+          "https://football.fantasysports.yahoo.com",
+        );
+        scheduleUrl.search = new URLSearchParams({
+          module: "standings",
+          lhst: "sched",
+          sctype: "team",
+          scmid: teamId,
+        }).toString();
+        await progress("Reading league schedule " + teamId);
+        const schedule = await readPage(
+          scheduleUrl.href,
+          "#yspmain",
+          "league-schedule",
+        );
+        schedule.filters = { ...schedule.filters, teamId, capturedAt };
+        scouts.push(schedule);
+      }
+      if (scouts.length)
+        fs.writeFileSync(
+          scoutingFile,
+          JSON.stringify({ root, capturedAt, pages: scouts }),
+          { mode: 0o600 },
+        );
+      pages.push(...scouts);
+    }
     const week = normalize(pages).week;
     const coverage = [];
     {

@@ -16,11 +16,19 @@ export function LineupRecommendations({
 }: {
   snapshot: SnapshotData;
 }) {
+  const [choices, setChoices] = useState<Record<string, string>>({});
+  const constraints = useMemo(
+    () => ({
+      pinned: Object.keys(choices).filter((id) => choices[id] === "pin"),
+      excluded: Object.keys(choices).filter((id) => choices[id] === "exclude"),
+    }),
+    [choices],
+  );
   const [mode, setMode] = useState<ProjectionMode>("yahoo");
   const [risk, setRisk] = useState<RiskMode>("balanced");
   const a = useMemo(
-    () => strategyLineup(snapshot, mode, risk),
-    [snapshot, mode, risk],
+    () => strategyLineup(snapshot, mode, risk, constraints),
+    [snapshot, mode, risk, constraints],
   );
   const players = new Map(snapshot.players.map((p) => [p.id, p]));
   const unlocked = snapshot.players.filter(
@@ -62,6 +70,36 @@ export function LineupRecommendations({
           </button>
         ))}
       </div>
+      <details className="lineup-receipts">
+        <summary>My call · pin or bench a player</summary>
+        <p>
+          Game locks still apply. Conflicting choices leave the lineup unfilled
+          instead of ignoring your instructions.
+        </p>
+        <div className="lab-controls">
+          {snapshot.players.map((p) => (
+            <label key={p.id}>
+              <PlayerLink id={p.id} />
+              <select
+                aria-label={"Lineup choice for " + p.name}
+                value={choices[p.id] || "auto"}
+                disabled={
+                  p.locked ||
+                  (!!p.kickoffAt && Date.parse(p.kickoffAt) <= Date.now())
+                }
+                onChange={(e) =>
+                  setChoices({ ...choices, [p.id]: e.target.value })
+                }
+              >
+                <option value="auto">Coach decides</option>
+                <option value="pin">Keep this guy in</option>
+                <option value="exclude">Bench this guy</option>
+              </select>
+            </label>
+          ))}
+        </div>
+        <button onClick={() => setChoices({})}>Clear my choices</button>
+      </details>
       <div className="risk-controls">
         <span className="eyebrow">HOW DO YOU WANT TO PLAY IT?</span>
         <div

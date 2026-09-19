@@ -12,6 +12,7 @@ export function fits(p: PlayerData, slot: string) {
 }
 export function advice(
   s: Pick<SnapshotData, "players" | "capturedAt" | "week">,
+  constraints: { pinned?: string[]; excluded?: string[] } = {},
 ) {
   s = {
     ...s,
@@ -30,6 +31,7 @@ export function advice(
   const slots = movable.map((p) => p.slot);
   const pool = s.players.filter(
     (p) =>
+      !constraints.excluded?.includes(p.id) &&
       p.bye !== s.week &&
       !p.locked &&
       !["IR", "IR+", "NA"].includes(p.slot) &&
@@ -49,6 +51,13 @@ export function advice(
     moves: number,
   ) {
     if (i === slots.length) {
+      if (
+        constraints.pinned?.some(
+          (id) => ![...locked, ...picks].some((p) => p.id === id),
+        ) ||
+        constraints.excluded?.some((id) => locked.some((p) => p.id === id))
+      )
+        return;
       if (
         total > best + epsilon ||
         (Math.abs(total - best) <= epsilon && moves < bestMoves)

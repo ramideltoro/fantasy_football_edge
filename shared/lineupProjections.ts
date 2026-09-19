@@ -100,16 +100,20 @@ export function lineupProjection(p: PlayerData, mode: ProjectionMode) {
 export function lineupAdvice(
   s: Pick<SnapshotData, "players" | "capturedAt" | "week">,
   mode: ProjectionMode,
+  constraints: { pinned?: string[]; excluded?: string[] } = {},
 ) {
   const projections = Object.fromEntries(
     s.players.map((p) => [p.id, lineupProjection(p, mode)]),
   );
-  const result = advice({
-    ...s,
-    players: s.players.map((p) => ({
-      ...p,
-      projected: projections[p.id].points,
-    })),
-  });
+  const result = advice(
+    {
+      ...s,
+      players: s.players.map((p) => ({
+        ...p,
+        projected: projections[p.id].points,
+      })),
+    },
+    constraints,
+  );
   return { ...result, method: projectionModes[mode].description, projections };
 }

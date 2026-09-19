@@ -1,3 +1,12 @@
+import {
+  LabActions,
+  UsageRadar,
+  MatchupRadar,
+  TradeFinder,
+  WaiverCoach,
+  PlayoffRace,
+  DraftRoom,
+} from "./EdgeLab";
 import { recordSortValue } from "../shared/tableSort";
 import { LineupRecommendations } from "./LineupRecommendations";
 import {
@@ -74,11 +83,13 @@ const groups: Record<string, string[]> = {
     "Recommendations",
     "Three-week plan",
     "Kickoff watch",
+    "Matchup radar",
     "AI insights",
   ],
-  Waivers: ["Waiver list", "Pickup impact"],
+  Waivers: ["Waiver list", "Pickup impact", "Breakout radar", "Claim coach"],
   Research: ["Report card", "Weekly recap", "What changed", "News & trends"],
-  League: ["League"],
+  League: ["League", "Trade finder", "Playoff race"],
+  "Draft Room": ["Draft Room"],
   Operations: ["Yahoo refresh", "Import health"],
 };
 const validTab = (hash: string) => {
@@ -104,6 +115,17 @@ function Dashboard({
 }) {
   const { open: openPlayers } = usePlayers();
   const setSelected = (p: PlayerData | null) => p && openPlayers([p.id]);
+  const [lab, setLab] = useState<any>(null);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/edge-lab")
+        .then((r) => (r.ok ? r.json() : null))
+        .then(setLab)
+        .catch(() => {});
+    void load();
+    const timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, []);
   const refreshing = useRef(false);
   const [importState, setImportState] = useState<any>(null);
   const [requestMessage, setRequestMessage] = useState("");
@@ -132,11 +154,7 @@ function Dashboard({
       if (!r.ok) throw Error();
       const body = await r.json();
       setD(body);
-      onPlayers([
-        ...(body.snapshot?.players || []),
-        ...(body.snapshot?.available || []),
-        ...(body.gamePlan?.historyPlayers || []),
-      ]);
+
       if (body.owner) {
         const request = await fetch("/api/import/request");
         if (request.ok) {
@@ -165,6 +183,45 @@ function Dashboard({
     const t = setInterval(refresh, 10000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => {
+    const sources = [
+      ...(lab?.players || []),
+      ...(d?.snapshot?.players || []),
+      ...(d?.snapshot?.available || []),
+      ...(d?.gamePlan?.historyPlayers || []),
+    ];
+    const merged = new Map<string, PlayerData>();
+    for (const p of sources) {
+      const prior = merged.get(p.id);
+      merged.set(p.id, {
+        ...prior,
+        ...p,
+        research: { ...p.research, lab: (prior as any)?.lab || (p as any).lab },
+      });
+    }
+    for (const p of lab?.draft?.players || [])
+      if (![...merged.values()].some((r) => r.name === p.name))
+        merged.set("ffc:" + p.player_id, {
+          id: "ffc:" + p.player_id,
+          name: p.name,
+          position: p.position === "PK" ? "K" : p.position,
+          team: p.team,
+          slot: "",
+          bye: p.bye,
+          actual: null,
+          projected: null,
+          startPct: null,
+          rosterPct: null,
+          status: "",
+          locked: false,
+          kickoffAt: null,
+          completed: false,
+          availability: "Draft research",
+          eligible: [p.position],
+          stats: {},
+        });
+    onPlayers([...merged.values()]);
+  }, [d, lab, onPlayers]);
   const s = d?.snapshot,
     players: PlayerData[] = s?.players || [],
     pool: PlayerData[] = useMemo(
@@ -363,6 +420,7 @@ function Dashboard({
             {tab === "Overview" && (
               <>
                 <ActionBrief snapshot={s} plan={d.gamePlan} navigate={setTab} />
+                <LabActions lab={lab} navigate={setTab} />
                 <HealthBoard players={players} />
                 <ChangesFeed plan={d.gamePlan} compact navigate={setTab} />
                 <section className="panel matchup-commentary">
@@ -487,6 +545,12 @@ function Dashboard({
                 </div>
               </>
             )}
+            {tab === "Breakout radar" && <UsageRadar lab={lab} snapshot={s} />}
+            {tab === "Matchup radar" && <MatchupRadar lab={lab} snapshot={s} />}
+            {tab === "Trade finder" && <TradeFinder lab={lab} />}
+            {tab === "Claim coach" && <WaiverCoach lab={lab} snapshot={s} />}
+            {tab === "Playoff race" && <PlayoffRace lab={lab} />}
+            {tab === "Draft Room" && <DraftRoom lab={lab} />}
             {tab === "My roster" && (
               <PlayerTable
                 players={players}

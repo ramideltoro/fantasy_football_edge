@@ -68,6 +68,17 @@ export const Snapshot = z.object({
     )
     .default([]),
   sections: z.array(Section),
+  leagueRosters: z
+    .array(
+      z.object({
+        teamId: z.string(),
+        name: z.string(),
+        capturedAt: z.iso.datetime(),
+        players: z.array(Player),
+        schedule: z.array(z.object({ week: z.number(), opponent: z.string() })),
+      }),
+    )
+    .optional(),
 });
 export type SnapshotData = z.infer<typeof Snapshot>;
 export type PlayerData = z.infer<typeof Player>;

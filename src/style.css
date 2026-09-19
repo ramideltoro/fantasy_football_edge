@@ -3952,3 +3952,171 @@ th[aria-sort="descending"] .sort-indicator {
     transform: none;
   }
 }
+/* Connected scouting tools */
+.lab-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.lab-tiles > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  padding: 22px;
+  border: 1px solid #b575204d;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #392613, #19150f);
+  transition:
+    transform 0.18s,
+    border-color 0.18s;
+  color: inherit;
+}
+.lab-tiles > button:hover {
+  transform: translateY(-3px);
+  border-color: #edaa3f;
+}
+.lab-tiles strong {
+  font-size: 1.15rem;
+  color: #ffe0a2;
+}
+.lab-tiles span {
+  line-height: 1.5;
+  color: #c5bba9;
+}
+.lab-tiles b {
+  font-size: 0.8rem;
+  color: #e9a43a;
+}
+.lab-status {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.lab-controls {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: end;
+  margin: 20px 0;
+}
+.lab-controls label,
+.lab-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+.lab-field {
+  max-width: 460px;
+  margin: 20px 0;
+}
+.lab-controls select,
+.lab-field select,
+.lab-controls input,
+.trade-picker select {
+  padding: 11px;
+  border: 1px solid #6d5637;
+  background: #191813;
+  color: #f3e5ca;
+  border-radius: 9px;
+  max-width: 100%;
+}
+.lab-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+.trade-picker {
+  max-height: 370px;
+  overflow: auto;
+  border: 1px solid #6d563745;
+  border-radius: 12px;
+}
+.trade-picker > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid #ffffff0c;
+}
+.trade-picker span {
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+.trade-picker input {
+  accent-color: #f5b84b;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.trade-verdict {
+  margin: 24px 0;
+  padding: 22px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #45301855, #191814);
+  border: 1px solid #b780374f;
+}
+.matchup-chip {
+  display: inline-block;
+  padding: 6px 9px;
+  border-radius: 7px;
+  background: #c49b3420;
+  font-size: 0.8rem;
+}
+.matchup-chip.good {
+  color: #a4dba5;
+  background: #408c3f22;
+}
+.matchup-chip.tough {
+  color: #ffb09b;
+  background: #ba503d22;
+}
+.table-wrap td small {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+.edge-lab-actions {
+  border-top: 3px solid #efb03e;
+}
+.panel details > summary {
+  cursor: pointer;
+  margin: 18px 0 10px;
+}
+.panel .table-wrap input {
+  max-width: 150px;
+  background: #171714;
+  color: inherit;
+  border: 1px solid #65543a;
+  border-radius: 5px;
+  padding: 7px;
+}
+@media (max-width: 800px) {
+  .lab-tiles,
+  .lab-columns {
+    grid-template-columns: 1fr;
+  }
+  .lab-controls {
+    align-items: stretch;
+  }
+  .lab-controls label {
+    width: 100%;
+  }
+  .lab-tiles > button {
+    padding: 18px;
+  }
+  .trade-picker > div {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-tiles > button {
+    transition: none;
+  }
+  .lab-tiles > button:hover {
+    transform: none;
+  }
+}
