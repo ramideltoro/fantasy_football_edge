@@ -1,5 +1,4 @@
 import { PlayerTable } from "./PlayerExperience";
-import { PositionSuggestions } from "./PositionSuggestions";
 import { WaiverBrief } from "./WaiverBrief";
 import type { PlayerData } from "../shared/model";
 export function WaiverList({
@@ -20,10 +19,6 @@ export function WaiverList({
         description="Quit shopping for a famous name. Find a role, check the points, and make the pickup earn its damn locker."
         waivers
       />
-      <details className="panel">
-        <summary>Position picks · Qwen’s waiver board</summary>
-        <PositionSuggestions pool={pool} onPlayer={onPlayer} />
-      </details>
       <details className="panel">
         <summary>The full waiver briefing & sources</summary>
         <WaiverBrief pool={pool} onPlayer={onPlayer} />

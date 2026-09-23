@@ -1,4 +1,7 @@
-import { defensePointsAllowed } from "../shared/defenseMatchup.ts";
+import {
+  defensePointsAllowed,
+  defenseMatchupForecast,
+} from "../shared/defenseMatchup.ts";
 import { averageStats, calibratedBaseline } from "../shared/leagueScoring.ts";
 import { playerProfiles } from "./playerProfiles.ts";
 import { waiverNews, matchingNews } from "./waiverNews.ts";
@@ -251,6 +254,17 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
               s.week,
             )
           : null,
+      defenseForecast:
+        p.position === "DEF"
+          ? defenseMatchupForecast(
+              t,
+              Number(nextDefenseGame?.week) === s.week ? nextOpponent : null,
+              eligibleTeams,
+              rules,
+              s.season,
+              s.week,
+            )
+          : null,
       profile: profiles[p.id] || null,
       researchHistory: (p.position === "DEF" ? teamStats : stats)
         .filter(
@@ -353,7 +367,11 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
         p.bye !== s.week &&
         !["O", "IR", "PUP", "SUSP"].includes(p.injury),
     )
-    .sort((a, b) => (b.projection ?? -Infinity) - (a.projection ?? -Infinity));
+    .sort(
+      (a, b) =>
+        (b.defenseForecast?.points ?? b.projection ?? -Infinity) -
+        (a.defenseForecast?.points ?? a.projection ?? -Infinity),
+    );
   const shortlist = [
     ...players
       .filter((p) => !!p.slot && (!!p.injury || p.bye === s.week))
@@ -362,7 +380,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 13,
+    version: 14,
     scoring: scoring(s),
     newsSources: newsResearch.sources,
     waiverCandidates: ["QB", "K", "DEF", "RB", "WR", "TE"].flatMap((position) =>

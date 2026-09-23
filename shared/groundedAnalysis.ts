@@ -14,6 +14,10 @@ export function evidenceFor(p: any) {
       ? `Imported injury designation: ${p.injury}.`
       : "No injury designation was present in the import.",
   };
+  if (p.defenseForecast?.points != null) {
+    const d = p.defenseForecast;
+    facts.defenseMatchup = `Current-season DEF matchup estimate: ${d.points.toFixed(2)} fantasy points vs ${d.opponent}. 50% defense average ${d.defenseAverage.toFixed(2)} (${d.ownGames.length} games) + 50% opponent points allowed to DEF ${d.opponentAverage.toFixed(2)} (${d.opponentGames.length} games). ${d.limitation}`;
+  }
   if (p.opponent) facts.opponent = `Scheduled opponent: ${p.opponent}.`;
   if (p.history.length) {
     const h = p.history;

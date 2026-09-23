@@ -1,201 +1,210 @@
-import { SortableTable } from "./SortableTable";
-import {
-  PlayerLink,
-  PlayerText,
-  PlayerChartTick,
-  yahooPoints,
-} from "./PlayerExperience";
 import type { PlayerData } from "../shared/model";
-import { useAnalysis } from "./useAnalysis";
-import { useNews } from "./NewsHub";
 import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from "recharts";
+  positionShortlist,
+  waiverForecast,
+  waiverPositions,
+} from "../shared/shortlist";
+const names: Record<string, string> = {
+  QB: "Quarterbacks",
+  RB: "Running backs",
+  WR: "Wide receivers",
+  TE: "Tight ends",
+  K: "Kickers",
+  DEF: "Defenses",
+};
+const points = (value: number | null | undefined) =>
+  value == null ? "—" : value.toFixed(2);
 export function PositionSuggestions({
   pool,
+  week,
+  snapshotAt,
   onPlayer,
 }: {
   pool: PlayerData[];
+  week: number;
+  snapshotAt: string;
   onPlayer: (p: PlayerData) => void;
 }) {
-  const state = useAnalysis(),
-    news = useNews(),
-    q = state?.data?.qwen || state?.previousQwen,
-    picks = q?.waivers || [];
-  const names: Record<string, string> = {
-    QB: "Quarterbacks",
-    RB: "Running backs",
-    WR: "Wide receivers",
-    TE: "Tight ends",
-    K: "Kickers",
-    DEF: "Defenses",
-  };
   return (
     <section className="position-section">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">SIX POSITION WATCHLISTS</span>
-          <h3>Find the help. Skip the hype.</h3>
+          <span className="eyebrow">SIX POSITION SHORTLISTS</span>
+          <h3>The best available help at every position.</h3>
         </div>
-        <p>
-          Qwen priority / 100 and projected fantasy points are separate
-          measures.
-        </p>
       </div>
+      <p>
+        Top three eligible imported options per position, refreshed with the
+        dashboard. QB, RB, WR, TE and K use current Qwen forecasts when
+        available, otherwise Yahoo. DEF prioritizes the current-season matchup
+        model; fallback-only options appear after supported estimates.
+      </p>
+      <small>
+        Availability from Yahoo: {new Date(snapshotAt).toLocaleString()}.
+        Confirm availability and claim timing before adding a player.
+      </small>
       <div className="position-grid">
-        {Object.entries(names).map(([pos, label]) => {
-          const ranked = pool
-            .filter(
-              (p) =>
-                p.position === pos &&
-                /^(FA|W)/.test(p.availability) &&
-                !p.locked &&
-                (!p.kickoffAt || Date.parse(p.kickoffAt) > Date.now()) &&
-                p.bye !== state?.data?.week &&
-                !["O", "IR", "PUP", "SUSP"].includes(p.status),
-            )
-            .sort(
-              (a, b) =>
-                (picks.find((x: any) => x.id === b.id)?.score ?? -1) -
-                  (picks.find((x: any) => x.id === a.id)?.score ?? -1) ||
-                (b.projected ?? -1) - (a.projected ?? -1),
-            )
-            .slice(0, 3);
-          const lead = ranked[0],
-            pick = picks.find((x: any) => x.id === lead?.id),
-            event = news?.events?.find(
-              (e: any) =>
-                e.playerId === lead?.id && e.assessment && !e.supersededAt,
-            );
+        {waiverPositions.map((pos) => {
+          const ranked = positionShortlist(pool, pos, week),
+            lead = ranked[0],
+            model = lead?.research?.defenseForecast;
           return (
             <article key={pos} className="panel position-card">
               <div className="section-heading">
-                <h4>{label}</h4>
+                <h4>{names[pos]}</h4>
                 <span className="position-badge">{pos}</span>
               </div>
               {lead ? (
                 <>
+                  <small>
+                    {waiverForecast(lead, week).points == null
+                      ? "Projection unavailable · review candidates"
+                      : "Top projected pickup"}
+                  </small>
                   <button
                     className="candidate-name"
                     onClick={() => onPlayer(lead)}
                   >
                     {lead.name} ↗
                   </button>
-                  <small>
+                  <p>
                     {lead.team} · {lead.availability}
-                  </small>
+                    {lead.research?.opponent
+                      ? ` · vs ${lead.research.opponent}`
+                      : ""}
+                  </p>
                   <div className="candidate-numbers">
                     <div>
-                      <strong>{pick?.score ?? "—"}</strong>
-                      <span>Qwen / 100</span>
-                    </div>
-                    <div>
                       <strong>
-                        {(lead.providerProjected ?? lead.projected)?.toFixed(
-                          1,
-                        ) ?? "—"}
+                        {points(waiverForecast(lead, week).points)}
                       </strong>
-                      <span>Yahoo points</span>
-                    </div>
-                    <div>
-                      <strong>
-                        {lead.aiProjection?.points?.toFixed(1) ?? "—"}
-                      </strong>
-                      <span>Statistical points</span>
+                      <span>
+                        {waiverForecast(lead, week).source} · projected points
+                      </span>
                     </div>
                   </div>
-                  <small>
-                    {state?.qwenUpdated ? "Updated" : "Not updated"} ·{" "}
-                    {q?.generatedAt
-                      ? new Date(q.generatedAt).toLocaleString()
-                      : "Awaiting AI"}
-                  </small>
-                  {event && (
-                    <p className="news-signal">
-                      {event.assessment.action} · {event.type} report{" "}
-                      <a href={event.url} target="_blank" rel="noreferrer">
-                        Source ↗
-                      </a>
-                    </p>
+                  {pos === "DEF" && (
+                    <>
+                      {model?.points != null ? (
+                        <p>
+                          {points(model.defenseAverage)} DEF points/game × 50% +{" "}
+                          {points(model.opponentAverage)} allowed by{" "}
+                          {model.opponent} × 50% ={" "}
+                          <b>{points(model.points)} projected points</b>. Uses{" "}
+                          {model.ownGames.length} defensive games and{" "}
+                          {model.opponentGames.length} opponent games from{" "}
+                          {model.season}.
+                        </p>
+                      ) : (
+                        <p>
+                          Not enough current-season data for both the defense
+                          and its opponent. The displayed forecast is a labeled
+                          fallback.
+                        </p>
+                      )}
+                      <small>
+                        {model?.limitation || "Matchup research pending."}
+                      </small>
+                    </>
                   )}
-                  <details>
-                    <summary>Why consider {lead.name.split(" ")[0]}?</summary>
-                    <p>
-                      {pick?.summary ||
-                        "Available candidate ranked by current projection. Review roster fit, injury status and claim timing."}
-                    </p>
-                    <small>
-                      {pick?.summaryKind || "Statistical shortlist"} · priority
-                      is not win probability.
-                    </small>
-                    {event && <p>{event.assessment.interpretation}</p>}
-                  </details>
-                  <details>
-                    <summary>Compare {ranked.length} candidates</summary>
-                    <ResponsiveContainer width="100%" height={150}>
-                      <BarChart
-                        data={ranked.map((p) => ({
-                          name: p.name,
-                          points: yahooPoints(p),
-                        }))}
-                      >
-                        <XAxis dataKey="name" tick={<PlayerChartTick />} />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar
-                          isAnimationActive={false}
-                          dataKey="points"
-                          name="Yahoo points"
-                          fill="#f5ad32"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                    <small>
-                      Yahoo weekly projections ·{" "}
-                      {state?.snapshotAt
-                        ? new Date(state.snapshotAt).toLocaleString()
-                        : "unknown freshness"}
-                    </small>
-                    <div className="table-wrap">
-                      <SortableTable>
-                        <thead>
-                          <tr>
-                            <th>Player</th>
-                            <th>Qwen /100</th>
-                            <th>Yahoo pts</th>
-                            <th>Qwen pts</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {ranked.map((p) => (
-                            <tr key={p.id}>
-                              <td>
-                                <button onClick={() => onPlayer(p)}>
-                                  {p.name}
-                                </button>
-                              </td>
-                              <td>
-                                {picks.find((x: any) => x.id === p.id)?.score ??
-                                  "Not scored"}
-                              </td>
-                              <td>{yahooPoints(p)?.toFixed(2) ?? "—"}</td>
-                              <td>
-                                {p.aiProjection?.points?.toFixed(2) ?? "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </SortableTable>
-                    </div>
-                  </details>
+                  <ol>
+                    {ranked.map((p, i) => {
+                      const forecast = waiverForecast(p, week),
+                        d = p.research?.defenseForecast;
+                      return (
+                        <li key={p.id}>
+                          <div className="watch">
+                            <button onClick={() => onPlayer(p)}>
+                              {p.name}
+                            </button>
+                            <span>
+                              {points(forecast.points)} pts · {forecast.source}
+                            </span>
+                          </div>
+                          {pos === "DEF" && (
+                            <>
+                              <small>
+                                Next:{" "}
+                                {d?.opponent ||
+                                  p.research?.defenseMatchup?.opponent ||
+                                  "Pending"}{" "}
+                                · DEF avg {points(d?.defenseAverage)} · Opponent
+                                allows {points(d?.opponentAverage)}
+                              </small>
+                              {d?.points != null && (
+                                <details>
+                                  <summary>
+                                    Show current-season game calculation
+                                  </summary>
+                                  <p>
+                                    {d.method}. {d.limitation}
+                                  </p>
+                                  <p>
+                                    <b>{p.name} performance:</b>{" "}
+                                    {d.ownGames
+                                      .map(
+                                        (g: any) =>
+                                          `W${g.week} vs ${g.opponent}: ${points(g.points)}`,
+                                      )
+                                      .join("; ")}{" "}
+                                    fantasy points.
+                                  </p>
+                                  <p>
+                                    <b>
+                                      {d.opponent} allowed to opposing defenses:
+                                    </b>{" "}
+                                    {d.opponentGames
+                                      .map(
+                                        (g: any) =>
+                                          `W${g.week} ${g.defense}: ${points(g.points)}`,
+                                      )
+                                      .join("; ")}{" "}
+                                    fantasy points.
+                                  </p>
+                                  <small>
+                                    League scoring · research{" "}
+                                    {p.research?.generatedAt
+                                      ? new Date(
+                                          p.research.generatedAt,
+                                        ).toLocaleString()
+                                      : "pending"}
+                                    . Statistics:{" "}
+                                    <a
+                                      href={`https://github.com/nflverse/nflverse-data/releases/tag/stats_team`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      nflverse team game data
+                                    </a>
+                                    .
+                                  </small>
+                                </details>
+                              )}
+                            </>
+                          )}
+                          {i === 0 &&
+                            pos === "DEF" &&
+                            d?.points != null &&
+                            ranked[1]?.research?.defenseForecast?.points !=
+                              null && (
+                              <small>
+                                {points(
+                                  d.points -
+                                    ranked[1].research.defenseForecast.points,
+                                )}{" "}
+                                points ahead of {ranked[1].name} in this model.
+                              </small>
+                            )}
+                        </li>
+                      );
+                    })}
+                  </ol>
                 </>
               ) : (
-                <p>No eligible imported candidates at this position.</p>
+                <p>
+                  No eligible imported candidates at this position. Locked
+                  games, byes and unavailable players are excluded.
+                </p>
               )}
             </article>
           );

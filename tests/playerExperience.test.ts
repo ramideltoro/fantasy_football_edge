@@ -5,7 +5,7 @@ import { leagueOverview } from "../shared/analytics.ts";
 import { validateForecasts } from "../server/projections.ts";
 import { applyProjections } from "../shared/applyProjections.ts";
 import { playerProfiles } from "../server/playerProfiles.ts";
-test("shortlist caps QB at three and fills remaining places with other positions", () => {
+test("shortlist gives each position its own three places", () => {
   const pool: any = Array.from({ length: 18 }, (_, i) => ({
     id: String(i),
     position: i < 8 ? "QB" : "RB",
@@ -13,7 +13,7 @@ test("shortlist caps QB at three and fills remaining places with other positions
     availability: "FA",
   }));
   const r = waiverShortlist(pool);
-  assert.equal(r.length, 10);
+  assert.equal(r.length, 6);
   assert.equal(r.filter((p) => p.position === "QB").length, 3);
   assert.deepEqual(
     r.slice(0, 3).map((p) => p.id),

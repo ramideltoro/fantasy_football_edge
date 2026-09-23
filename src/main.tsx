@@ -23,7 +23,7 @@ import {
   PlayerLink,
   usePlayers,
 } from "./PlayerExperience";
-import { waiverShortlist } from "../shared/shortlist";
+import { PositionSuggestions } from "./PositionSuggestions";
 import { NewsHub, NewsOperations, DecisionOverview } from "./NewsHub";
 import { AnalysisRefresh } from "./AnalysisRefresh";
 import { AIInsights } from "./AIInsights";
@@ -391,27 +391,15 @@ function Dashboard({
                   <summary>
                     Waiver shortlist{" "}
                     <span>
-                      Quick picks · up to 3 QBs, then the best of the rest
+                      Top 3 per position · current projections & DEF matchups
                     </span>
                   </summary>
-                  {s.available.length ? (
-                    waiverShortlist(s.available).map((p: PlayerData) => (
-                      <div className="watch" key={p.id}>
-                        <PlayerLink id={p.id} />
-                        <span>
-                          {p.position} · {fmt(p.projected)} projected
-                        </span>
-                        <button onClick={() => setSelected(p)}>
-                          Inspect <ChevronRight size={14} />
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="empty">
-                      The next player-pool import will populate this list.
-                      Availability must be checked in Yahoo before a claim.
-                    </p>
-                  )}
+                  <PositionSuggestions
+                    pool={s.available}
+                    week={s.week}
+                    snapshotAt={s.capturedAt}
+                    onPlayer={setSelected}
+                  />
                 </details>
                 <WaiverList pool={pool} onPlayer={setSelected} />
               </>
