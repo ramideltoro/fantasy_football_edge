@@ -45,6 +45,7 @@ export async function enrichSnapshot(
           scoringHistory: research.baseline?.history || [],
           baselinePoints: research.baseline?.points ?? null,
           opponent: research.opponent,
+          defenseMatchup: research.defenseMatchup || null,
           headlines: research.headlines,
           generatedAt: intelligence.generatedAt,
         }

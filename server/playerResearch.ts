@@ -1,3 +1,4 @@
+import { defensePointsAllowed } from "../shared/defenseMatchup.ts";
 import { averageStats, calibratedBaseline } from "../shared/leagueScoring.ts";
 import { playerProfiles } from "./playerProfiles.ts";
 import { waiverNews, matchingNews } from "./waiverNews.ts";
@@ -34,7 +35,13 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
         [url],
       )
     ).rows[0];
-    if (old && Date.now() - Date.parse(old.updated_at) < 86400000) {
+    if (
+      old &&
+      Date.now() - Date.parse(old.updated_at) <
+        (path.includes(String(s.season)) || path === "schedules/games.csv"
+          ? 2 * 3600000
+          : 86400000)
+    ) {
       sources.push({ url, updatedAt: old.updated_at, status: "cached" });
       return old.data;
     }
@@ -146,6 +153,27 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
           (x: string) => (aliases[x] || x) === (aliases[t] || t),
         ),
     );
+    const nextDefenseGame =
+      p.position === "DEF"
+        ? games
+            .filter(
+              (g: any) =>
+                Number(g.season) === s.season &&
+                Number(g.week) >= s.week &&
+                g.game_type === "REG" &&
+                (g.home_score == null || g.home_score === "") &&
+                [g.home_team, g.away_team].some(
+                  (x: string) => (aliases[x] || x) === (aliases[t] || t),
+                ),
+            )
+            .sort((a: any, b: any) => Number(a.week) - Number(b.week))[0]
+        : null;
+    const nextOpponent = nextDefenseGame
+      ? (aliases[nextDefenseGame.home_team] || nextDefenseGame.home_team) ===
+        (aliases[t] || t)
+        ? nextDefenseGame.away_team
+        : nextDefenseGame.home_team
+      : null;
     const opponent = game
       ? (aliases[game.home_team] || game.home_team) === (aliases[t] || t)
         ? game.away_team
@@ -213,6 +241,16 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
       ...result,
       baseline,
       specialist,
+      defenseMatchup:
+        p.position === "DEF"
+          ? defensePointsAllowed(
+              nextOpponent,
+              eligibleTeams,
+              rules,
+              s.season,
+              s.week,
+            )
+          : null,
       profile: profiles[p.id] || null,
       researchHistory: (p.position === "DEF" ? teamStats : stats)
         .filter(
@@ -324,7 +362,7 @@ export async function research(db: Pool, s: SnapshotData, news: any[]) {
     ...recommendations.filter((p) => !p.slot).slice(0, 8),
   ];
   return {
-    version: 12,
+    version: 13,
     scoring: scoring(s),
     newsSources: newsResearch.sources,
     waiverCandidates: ["QB", "K", "DEF", "RB", "WR", "TE"].flatMap((position) =>

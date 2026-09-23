@@ -192,6 +192,14 @@ export function Role({
       <span>
         {unavailable ? "Unavailable" : p.nflRole?.label || "Checking role"}
       </span>
+      {p.position === "DEF" && (
+        <small>
+          Next: {p.research?.defenseMatchup?.opponent || "Opponent pending"} ·{" "}
+          {p.research?.defenseMatchup?.points != null
+            ? `${p.research.defenseMatchup.points.toFixed(2)} fantasy pts/game allowed to DEF (${p.research.defenseMatchup.season}, ${p.research.defenseMatchup.games} games${p.research.defenseMatchup.priorSeason ? "; prior-season fallback" : ""})`
+            : "Points allowed to DEF unavailable"}
+        </small>
+      )}
       {showProbability && (
         <small>
           {p.position === "DEF"

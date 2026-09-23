@@ -57,7 +57,7 @@ export async function installIntelligence(
     "UPDATE intelligence SET status='queued' WHERE status='building'",
   );
   await db.query(
-    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<12",
+    "UPDATE intelligence SET status='queued' WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND COALESCE((data->>'version')::int,0)<13",
   );
   await db.query(
     "ALTER TABLE intelligence ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0",
@@ -67,12 +67,20 @@ export async function installIntelligence(
       "INSERT INTO intelligence(snapshot_id) SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1 ON CONFLICT DO NOTHING",
     );
   }
+  // Refresh independent research even when Yahoo has no new snapshot. Keep the
+  // last usable data while rebuilding, and back off failed source collection.
+  await db.query(
+    "ALTER TABLE intelligence ADD COLUMN IF NOT EXISTS research_attempted_at timestamptz",
+  );
   let building = false;
   async function tick() {
     if (building) return;
     building = true;
     try {
       await enqueue();
+      await db.query(
+        "UPDATE intelligence SET status='queued',attempts=0 WHERE snapshot_id=(SELECT id FROM snapshots ORDER BY captured_at DESC LIMIT 1) AND status NOT IN ('building','queued') AND (status<>'analyzing' OR claimed_at<now()-interval '10 minutes') AND (status='failed' OR created_at IS NULL OR created_at<now()-interval '2 hours') AND (research_attempted_at IS NULL OR research_attempted_at<now()-interval '15 minutes')",
+      );
       const row = (
         await db.query(
           "SELECT i.snapshot_id,s.data FROM intelligence i JOIN snapshots s ON s.id=i.snapshot_id WHERE i.status='queued' ORDER BY s.captured_at DESC LIMIT 1",
@@ -80,7 +88,7 @@ export async function installIntelligence(
       ).rows[0];
       if (!row) return;
       await db.query(
-        "UPDATE intelligence SET status='building' WHERE snapshot_id=$1",
+        "UPDATE intelligence SET status='building',research_attempted_at=now() WHERE snapshot_id=$1",
         [row.snapshot_id],
       );
       const d = await research(db, row.data, news());

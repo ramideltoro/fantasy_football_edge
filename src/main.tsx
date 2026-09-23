@@ -91,16 +91,23 @@ function Dashboard({
     if (refreshing.current) return;
     refreshing.current = true;
     try {
-      const r = await fetch("/api/dashboard");
+      const r = await fetch("/api/dashboard", {
+        signal: AbortSignal.timeout(20000),
+        cache: "no-store",
+      });
       if (!r.ok) throw Error();
       const body = await r.json();
       setD(body);
 
       if (body.owner) {
-        const request = await fetch("/api/import/request");
+        const request = await fetch("/api/import/request", {
+          signal: AbortSignal.timeout(15000),
+        });
         if (request.ok) {
           const state = await request.json();
-          const ops = await fetch("/api/import/operations");
+          const ops = await fetch("/api/import/operations", {
+            signal: AbortSignal.timeout(15000),
+          });
           if (ops.ok) setImportState(await ops.json());
           setRequestMessage(
             state.pending
