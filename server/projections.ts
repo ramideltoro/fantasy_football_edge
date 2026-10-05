@@ -1,4 +1,9 @@
 import {
+  historyQuery,
+  projectionHistorySql,
+  completedHistorySql,
+} from "./historyQueries.ts";
+import {
   qwenPointsMethod,
   forecastOptions,
   projectionRequest,
@@ -242,11 +247,7 @@ export async function projectionMap(db: Pool, season: number, week: number) {
   return map;
 }
 export async function projectionAccuracy(db: Pool) {
-  const jobs = (
-    await db.query(
-      "SELECT j.data,j.result,j.completed_at,s.data - 'sections' AS snapshot FROM projection_jobs j JOIN snapshots s ON s.id=j.snapshot_id WHERE j.status='complete' AND j.data->>'method'='qwen-points-v5' ORDER BY j.completed_at ASC LIMIT 1000",
-    )
-  ).rows;
+  const jobs = await historyQuery(db, projectionHistorySql);
   const predictions = new Map<string, any>();
   for (const j of jobs)
     for (const f of j.result) {
@@ -266,11 +267,7 @@ export async function projectionAccuracy(db: Pool) {
         predictions.set(key, { ai: f.points, yahoo: original.projected });
     }
   const outcomes = new Map<string, number>();
-  for (const { data: s } of (
-    await db.query(
-      "SELECT data - 'sections' AS data FROM snapshots ORDER BY captured_at ASC LIMIT 1000",
-    )
-  ).rows)
+  for (const { data: s } of await historyQuery(db, completedHistorySql))
     for (const p of [...s.players, ...s.available])
       if (p.completed && p.actual !== null)
         outcomes.set([s.league.id, s.season, s.week, p.id].join(":"), p.actual);

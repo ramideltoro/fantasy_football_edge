@@ -62,3 +62,12 @@ export async function depthCharts() {
       .finally(() => (pending = null));
   return pending;
 }
+
+// Reading the dashboard must never wait for 32 external depth-chart requests.
+// The existing collector fills this cache; unverified roles stay unconfirmed.
+export function depthForDashboard() {
+  void depthCharts().catch(() => {});
+  return cached && Date.now() - Date.parse(cached.fetchedAt) < 3600000
+    ? cached
+    : null;
+}

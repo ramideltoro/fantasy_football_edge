@@ -7,7 +7,7 @@ import { scoring } from "../shared/playerForecast.ts";
 import { sportsbookProjection } from "../shared/sportsbook.ts";
 import { specialistBooks } from "../shared/specialistBooks.ts";
 import { actualPoints } from "../shared/leagueScoring.ts";
-import { depthCharts } from "./depth.ts";
+import { depthForDashboard } from "./depth.ts";
 export async function enrichSnapshot(
   db: Pool,
   raw: SnapshotData,
@@ -25,7 +25,7 @@ export async function enrichSnapshot(
   ).rows[0]?.data;
   const rules = scoring(raw);
   const odds = oddsState;
-  const depth = await depthCharts().catch(() => null);
+  const depth = depthForDashboard();
   const teamAliases: Record<string, string> = {
     JAC: "JAX",
     WAS: "WSH",

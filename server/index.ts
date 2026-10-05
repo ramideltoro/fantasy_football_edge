@@ -1,3 +1,4 @@
+import { dashboardHistorySql, historyQuery } from "./historyQueries.ts";
 import { installEdgeLab } from "./edgeLabService.ts";
 import { installYahoo } from "./yahooService.ts";
 import { enrichSnapshot } from "./enrichSnapshot.ts";
@@ -377,11 +378,6 @@ app.post(
     }
   },
 );
-let historicalCache: {
-  key: string;
-  at: number;
-  pending: Promise<any[]>;
-} | null = null;
 app.get("/api/dashboard", async (q, r) => {
   const row = (
     await db.query(
@@ -403,24 +399,13 @@ app.get("/api/dashboard", async (q, r) => {
   const gamePlan = await gamePlanService.get(raw);
   for (const p of [...s.players, ...s.available])
     p.gameDay = gamePlan?.availability?.[p.id] || null;
-  const historyKey = [s.season, s.team.id, s.league.id].join(":");
-  if (
-    !historicalCache ||
-    historicalCache.key !== historyKey ||
-    Date.now() - historicalCache.at > 10000
-  ) {
-    const pending = db
-      .query(
-        "SELECT data - 'sections' AS data FROM snapshots WHERE data->>'season'=$1 AND data->'team'->>'id'=$2 AND data->'league'->>'id'=$3 ORDER BY captured_at DESC LIMIT 1000",
-        [String(s.season), s.team.id, s.league.id],
-      )
-      .then((result) => result.rows);
-    historicalCache = { key: historyKey, at: Date.now(), pending };
-    pending.catch(() => {
-      historicalCache = null;
-    });
-  }
-  const historicalRows = [...(await historicalCache.pending)];
+  const historicalRows = [
+    ...(await historyQuery(db, dashboardHistorySql, [
+      String(s.season),
+      s.team.id,
+      s.league.id,
+    ])),
+  ];
   const history = historicalRows.reverse().map((x) => ({
     capturedAt: x.data.capturedAt,
     week: x.data.week,

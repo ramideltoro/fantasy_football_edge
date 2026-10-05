@@ -225,10 +225,7 @@ function Dashboard({
         <div className="sidebar-footer">
           <span className="dot" /> BIG MOUTH. REAL RECEIPTS.
           <p>Bring the noise. Bring the receipts.</p>
-          <a href="/auth/google">
-            <Lock size={13} />
-            {d?.owner ? "Owner session active" : "Owner sign in"}
-          </a>
+          <small>No sign-in needed to view the site.</small>
         </div>
       </aside>
       <main>
@@ -239,7 +236,7 @@ function Dashboard({
             <p className="section-description">{activeSection.description}</p>
           </div>
           <div className="header-right">
-            {d?.owner ? (
+            {d?.owner && (
               <button
                 className="icon"
                 onClick={async () => {
@@ -250,14 +247,6 @@ function Dashboard({
               >
                 <Lock size={16} />
               </button>
-            ) : (
-              <a
-                className="icon"
-                href="/auth/google"
-                aria-label="Owner sign in"
-              >
-                <Lock size={16} />
-              </a>
             )}
             <span className="season">
               {s ? `${s.season} SEASON · WEEK ${s.week}` : "FANTASY FOOTBALL"}
@@ -311,6 +300,17 @@ function Dashboard({
           <div className="loading">
             Taping ankles. Finding the damn clipboard…
           </div>
+        ) : !d ? (
+          <section className="panel" role="status">
+            <h2>The scoreboard hit a snag.</h2>
+            <p>
+              Viewing the site is public. This is a data-loading problem;
+              signing in isn’t needed.
+            </p>
+            <button className="primary" onClick={refresh}>
+              Try loading again <RefreshCw size={16} />
+            </button>
+          </section>
         ) : !s ? (
           <section className="hero">
             <span className="eyebrow">READY FOR YOUR LEAGUE</span>
@@ -320,12 +320,12 @@ function Dashboard({
               We’ll bring the noise.
             </h2>
             <p>
-              The dashboard is ready. Connect the Mac importer to bring in your
-              Yahoo roster, projections and league pages.
+              Waiting for the first imported roster. The dashboard is public;
+              you don’t need to sign in to see the team once it arrives.
             </p>
-            <a className="primary" href="/auth/google">
-              Owner sign in <ArrowUpRight size={16} />
-            </a>
+            <button className="primary" onClick={refresh}>
+              Check for team data <RefreshCw size={16} />
+            </button>
           </section>
         ) : (
           <>
@@ -494,43 +494,33 @@ function Dashboard({
                 </Panel>
               </>
             )}
-            {tab === "League" &&
-              (!d.owner ? (
-                <Panel
-                  title="League details are private"
-                  subtitle="Only your own roster and analysis appear publicly."
-                >
-                  <a className="primary" href="/auth/google">
-                    Sign in as owner <Lock size={16} />
-                  </a>
-                </Panel>
-              ) : (
-                <>
-                  {s.sections
-                    .filter((x: any) => !["roster", "players"].includes(x.kind))
-                    .map((section: any, i: number) => (
-                      <details className="panel" key={i}>
-                        <summary>
-                          {section.kind.toUpperCase()} · {section.title}
-                        </summary>
-                        <a href={section.url} target="_blank" rel="noreferrer">
-                          Open in Yahoo <ArrowUpRight size={14} />
-                        </a>
-                        <pre>
-                          {section.text
-                            .replaceAll(
-                              "ashokkumar's Legit Team",
-                              "ashok Legit Team",
-                            )
-                            .replaceAll(
-                              "Sekou Batchelor's Superb Team",
-                              "Sekou Superb Team",
-                            )}
-                        </pre>
-                      </details>
-                    ))}
-                </>
-              ))}
+            {tab === "League" && d.owner && (
+              <>
+                {s.sections
+                  .filter((x: any) => !["roster", "players"].includes(x.kind))
+                  .map((section: any, i: number) => (
+                    <details className="panel" key={i}>
+                      <summary>
+                        {section.kind.toUpperCase()} · {section.title}
+                      </summary>
+                      <a href={section.url} target="_blank" rel="noreferrer">
+                        Open in Yahoo <ArrowUpRight size={14} />
+                      </a>
+                      <pre>
+                        {section.text
+                          .replaceAll(
+                            "ashokkumar's Legit Team",
+                            "ashok Legit Team",
+                          )
+                          .replaceAll(
+                            "Sekou Batchelor's Superb Team",
+                            "Sekou Superb Team",
+                          )}
+                      </pre>
+                    </details>
+                  ))}
+              </>
+            )}
             {tab === "News & trends" && (
               <>
                 <DecisionOverview

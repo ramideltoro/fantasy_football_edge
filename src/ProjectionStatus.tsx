@@ -42,6 +42,19 @@ export function ProjectionStatus() {
         columns. Source links and the estimate’s timestamp are in player
         details.
       </p>
+      {d && !d.accuracy && (
+        <p role="status">
+          {d.accuracyState?.error ||
+            "Historical accuracy is loading in the background. Current projections are available."}
+        </p>
+      )}
+      {d?.accuracyState?.updatedAt && (
+        <small>
+          Scorecard checked{" "}
+          {new Date(d.accuracyState.updatedAt).toLocaleString()}
+          {d.accuracyState.pending ? " · Updating" : ""}
+        </small>
+      )}
       {d?.accuracy && (
         <p>
           Scored pregame estimates: {d.accuracy.samples} · Qwen error:{" "}

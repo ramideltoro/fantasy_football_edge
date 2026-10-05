@@ -1,3 +1,9 @@
+import { backgroundReport } from "./backgroundReport.ts";
+import {
+  historyQuery,
+  researchHistorySql,
+  completedHistorySql,
+} from "./historyQueries.ts";
 import { claimNews, saveNews, newsSummary } from "./newsService.ts";
 import { applyProjections } from "../shared/applyProjections.ts";
 import { advice } from "../shared/advice.ts";
@@ -222,6 +228,7 @@ export async function installIntelligence(
       });
     }
   });
+  const qwenScorecard = backgroundReport(() => projectionAccuracy(db));
   app.get("/api/projections", async (_q, r) => {
     const latest = (
       await db.query(
@@ -236,9 +243,15 @@ export async function installIntelligence(
         [latest.season, latest.week],
       )
     ).rows;
+    const report = qwenScorecard();
     return r.json({
       players: [...map.values()],
-      accuracy: await projectionAccuracy(db),
+      accuracy: report.value,
+      accuracyState: {
+        pending: report.pending,
+        updatedAt: report.updatedAt,
+        error: report.error,
+      },
       status,
       week: latest.week,
       snapshotAt: latest.capturedAt,
@@ -299,6 +312,54 @@ export async function installIntelligence(
     );
     void tick();
     r.json({ ok: true });
+  });
+  const legacyScorecard = backgroundReport(async () => {
+    const runs = await historyQuery(db, researchHistorySql);
+    const predictions = new Map<string, any>();
+    const outcomes = new Map<string, number>();
+    for (const run of runs) {
+      const s = run.snapshot;
+      for (const p of run.data.players) {
+        const key = [s.league.id, s.team.id, s.season, s.week, p.id].join(":");
+        if (
+          !predictions.has(key) &&
+          p.projection !== null &&
+          p.providerProjection !== null &&
+          !p.locked &&
+          p.kickoffAt &&
+          Date.parse(run.created_at) < Date.parse(p.kickoffAt)
+        )
+          predictions.set(key, {
+            name: p.name,
+            projection: p.projection,
+            baseline: p.providerProjection,
+          });
+      }
+    }
+    const snapshots = await historyQuery(db, completedHistorySql);
+    for (const { data: s } of snapshots)
+      for (const p of [...s.players, ...s.available])
+        if (p.completed && p.actual !== null)
+          outcomes.set(
+            [s.league.id, s.team.id, s.season, s.week, p.id].join(":"),
+            p.actual,
+          );
+    const points = [...predictions].flatMap(([key, p]) =>
+      outcomes.has(key) ? [{ ...p, actual: outcomes.get(key) }] : [],
+    );
+    const mae = (key: string) =>
+      points.length
+        ? points.reduce((n, p) => n + Math.abs(p[key] - p.actual), 0) /
+          points.length
+        : null;
+    return {
+      sampleSize: points.length,
+      modelMae: mae("projection"),
+      yahooMae: mae("baseline"),
+      points,
+      method:
+        "Earliest stored pre-kickoff statistical forecast compared with completed imported outcomes; this historical scorecard predates the separate Qwen point forecast pipeline.",
+    };
   });
   app.get("/api/intelligence", async (_q, r) => {
     const latest = (
@@ -368,52 +429,7 @@ export async function installIntelligence(
         }
       }
     }
-    const runs = (
-      await db.query(
-        "SELECT i.created_at,i.data,s.data - 'sections' AS snapshot FROM intelligence i JOIN snapshots s ON s.id=i.snapshot_id WHERE i.data IS NOT NULL ORDER BY i.created_at ASC LIMIT 1000",
-      )
-    ).rows;
-    const predictions = new Map<string, any>();
-    const outcomes = new Map<string, number>();
-    for (const run of runs) {
-      const s = run.snapshot;
-      for (const p of run.data.players) {
-        const key = [s.league.id, s.team.id, s.season, s.week, p.id].join(":");
-        if (
-          !predictions.has(key) &&
-          p.projection !== null &&
-          p.providerProjection !== null &&
-          !p.locked &&
-          p.kickoffAt &&
-          Date.parse(run.created_at) < Date.parse(p.kickoffAt)
-        )
-          predictions.set(key, {
-            name: p.name,
-            projection: p.projection,
-            baseline: p.providerProjection,
-          });
-      }
-    }
-    const snapshots = (
-      await db.query(
-        "SELECT data - 'sections' AS data FROM snapshots ORDER BY captured_at ASC LIMIT 1000",
-      )
-    ).rows;
-    for (const { data: s } of snapshots)
-      for (const p of [...s.players, ...s.available])
-        if (p.completed && p.actual !== null)
-          outcomes.set(
-            [s.league.id, s.team.id, s.season, s.week, p.id].join(":"),
-            p.actual,
-          );
-    const points = [...predictions].flatMap(([key, p]) =>
-      outcomes.has(key) ? [{ ...p, actual: outcomes.get(key) }] : [],
-    );
-    const mae = (key: string) =>
-      points.length
-        ? points.reduce((n, p) => n + Math.abs(p[key] - p.actual), 0) /
-          points.length
-        : null;
+    const report = legacyScorecard();
     r.json({
       ...current,
       previousQwen: previous || null,
@@ -424,13 +440,11 @@ export async function installIntelligence(
           14400000,
       status: current?.status || "queued",
       snapshotAt: latest.captured_at,
-      accuracy: {
-        sampleSize: points.length,
-        modelMae: mae("projection"),
-        yahooMae: mae("baseline"),
-        points,
-        method:
-          "Earliest stored pre-kickoff statistical forecast compared with completed imported outcomes; this historical scorecard predates the separate Qwen point forecast pipeline.",
+      accuracy: report.value,
+      accuracyState: {
+        pending: report.pending,
+        updatedAt: report.updatedAt,
+        error: report.error,
       },
     });
   });

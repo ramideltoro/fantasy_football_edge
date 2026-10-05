@@ -31,14 +31,14 @@ export function ImportOperations({ owner }: { owner: boolean }) {
   }, [owner]);
   if (!owner)
     return (
-      <section className="panel">
-        <h3>Yahoo refresh</h3>
+      <details className="panel">
+        <summary>Administration · connections & manual refresh</summary>
         <p>
-          Keys to the film room: sign in as the owner to refresh Yahoo data and
-          view worker logs.
+          The team, matchup and research are public. Only account connections,
+          manual refreshes and private worker logs need administrator access.
         </p>
-        <a href="/auth/google">Owner sign in</a>
-      </section>
+        <a href="/auth/google">Manage connections and refresh</a>
+      </details>
     );
   const pending = data?.request && !data.request.fulfilled_at;
   return (

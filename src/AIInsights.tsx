@@ -288,23 +288,33 @@ export function AIInsights({ owner }: { owner: boolean }) {
             <div className="metrics">
               <div className="metric">
                 <span>Scored forecasts</span>
-                <strong>{state.accuracy.sampleSize}</strong>
+                <strong>{state.accuracy?.sampleSize ?? "—"}</strong>
               </div>
               <div className="metric">
                 <span>Model mean absolute error</span>
-                <strong>{fmt(state.accuracy.modelMae)}</strong>
+                <strong>{fmt(state.accuracy?.modelMae)}</strong>
               </div>
               <div className="metric">
                 <span>Yahoo mean absolute error</span>
-                <strong>{fmt(state.accuracy.yahooMae)}</strong>
+                <strong>{fmt(state.accuracy?.yahooMae)}</strong>
               </div>
             </div>
             <p>
-              {state.accuracy.method} Lower error is better.{" "}
-              {state.accuracy.sampleSize === 0
+              {state.accuracy
+                ? state.accuracy.method + " Lower error is better."
+                : state.accuracyState?.error ||
+                  "Loading the historical scorecard. Current recommendations are ready."}{" "}
+              {state.accuracy?.sampleSize === 0
                 ? "Awaiting completed games after pregame forecasts were stored."
                 : ""}
             </p>
+            {state.accuracyState?.updatedAt && (
+              <small>
+                Scorecard checked{" "}
+                {new Date(state.accuracyState.updatedAt).toLocaleString()}
+                {state.accuracyState.pending ? " · Updating" : ""}
+              </small>
+            )}
           </section>
           <section className="panel">
             <h3>Evidence sources</h3>

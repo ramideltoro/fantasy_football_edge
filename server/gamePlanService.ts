@@ -1,3 +1,4 @@
+import { historyQuery, gamePlanHistorySql } from "./historyQueries.ts";
 import type { Express } from "express";
 import type { Pool, PoolClient } from "pg";
 import type { SnapshotData } from "../shared/model.ts";
@@ -258,11 +259,19 @@ export async function installGamePlan(
       ).rows[0];
       const schedule = scheduleFromRows(games?.data || [], s);
       const historical: SnapshotData[] = (
-        await db.query(
-          "SELECT data - 'sections' AS data FROM snapshots WHERE data->>'season'=$1 AND data->'league'->>'id'=$2 AND data->'team'->>'id'=$3 ORDER BY captured_at DESC LIMIT 2000",
-          [String(s.season), s.league.id, s.team.id],
-        )
-      ).rows
+        prior?.backfilled
+          ? await historyQuery(db, gamePlanHistorySql, [
+              String(s.season),
+              s.league.id,
+              s.team.id,
+            ])
+          : (
+              await db.query(
+                "SELECT data - 'sections' AS data FROM snapshots WHERE data->>'season'=$1 AND data->'league'->>'id'=$2 AND data->'team'->>'id'=$3 ORDER BY captured_at DESC LIMIT 2000",
+                [String(s.season), s.league.id, s.team.id],
+              )
+            ).rows
+      )
         .map((r) => r.data)
         .reverse();
       // Backfill only original timestamped Yahoo forecasts. Never reconstruct old combined forecasts with today's inputs.
